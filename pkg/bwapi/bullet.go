@@ -10,9 +10,9 @@ type Bullet struct {
 	game *Game
 }
 
-func (b *Bullet) ID() int              { return int(b.data.ID()) }
-func (b *Bullet) Exists() bool         { return b.data.Exists() }
-func (b *Bullet) GetType() BulletType  { return BulletType(b.data.TypeID()) }
+func (b *Bullet) ID() int             { return int(b.data.ID()) }
+func (b *Bullet) Exists() bool        { return b.data.Exists() }
+func (b *Bullet) GetType() BulletType { return BulletType(b.data.TypeID()) }
 
 func (b *Bullet) GetPlayer() *Player {
 	idx := int(b.data.PlayerIndex())

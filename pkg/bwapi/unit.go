@@ -13,10 +13,10 @@ type Unit struct {
 
 // --- Identity ---
 
-func (u *Unit) ID() int            { return int(u.data.ID()) }
-func (u *Unit) Index() int         { return u.index }
-func (u *Unit) Exists() bool       { return u.data.Exists() }
-func (u *Unit) GetType() UnitType  { return UnitType(u.data.TypeID()) }
+func (u *Unit) ID() int           { return int(u.data.ID()) }
+func (u *Unit) Index() int        { return u.index }
+func (u *Unit) Exists() bool      { return u.data.Exists() }
+func (u *Unit) GetType() UnitType { return UnitType(u.data.TypeID()) }
 
 // GetPlayer returns the owning player.
 func (u *Unit) GetPlayer() *Player {
@@ -37,13 +37,13 @@ func (u *Unit) GetTilePosition() TilePosition {
 	return TilePosition{X: u.data.PositionX() / 32, Y: u.data.PositionY() / 32}
 }
 
-func (u *Unit) Angle() float64      { return u.data.Angle() }
-func (u *Unit) VelocityX() float64  { return u.data.VelocityX() }
-func (u *Unit) VelocityY() float64  { return u.data.VelocityY() }
+func (u *Unit) Angle() float64     { return u.data.Angle() }
+func (u *Unit) VelocityX() float64 { return u.data.VelocityX() }
+func (u *Unit) VelocityY() float64 { return u.data.VelocityY() }
 
 // --- Stats ---
 
-func (u *Unit) HitPoints() int       { return int(u.data.HitPoints()) }
+func (u *Unit) HitPoints() int        { return int(u.data.HitPoints()) }
 func (u *Unit) LastHitPoints() int    { return int(u.data.LastHitPoints()) }
 func (u *Unit) Shields() int          { return int(u.data.Shields()) }
 func (u *Unit) Energy() int           { return int(u.data.Energy()) }
@@ -57,18 +57,18 @@ func (u *Unit) SpiderMineCount() int  { return int(u.data.SpiderMineCount()) }
 
 func (u *Unit) GroundWeaponCooldown() int { return int(u.data.GroundWeaponCooldown()) }
 func (u *Unit) AirWeaponCooldown() int    { return int(u.data.AirWeaponCooldown()) }
-func (u *Unit) SpellCooldown() int         { return int(u.data.SpellCooldown()) }
-func (u *Unit) DefenseMatrixPoints() int   { return int(u.data.DefenseMatrixPoints()) }
-func (u *Unit) DefenseMatrixTimer() int    { return int(u.data.DefenseMatrixTimer()) }
-func (u *Unit) StimTimer() int             { return int(u.data.StimTimer()) }
-func (u *Unit) RemainingBuildTime() int    { return int(u.data.RemainingBuildTime()) }
-func (u *Unit) RemainingTrainTime() int    { return int(u.data.RemainingTrainTime()) }
+func (u *Unit) SpellCooldown() int        { return int(u.data.SpellCooldown()) }
+func (u *Unit) DefenseMatrixPoints() int  { return int(u.data.DefenseMatrixPoints()) }
+func (u *Unit) DefenseMatrixTimer() int   { return int(u.data.DefenseMatrixTimer()) }
+func (u *Unit) StimTimer() int            { return int(u.data.StimTimer()) }
+func (u *Unit) RemainingBuildTime() int   { return int(u.data.RemainingBuildTime()) }
+func (u *Unit) RemainingTrainTime() int   { return int(u.data.RemainingTrainTime()) }
 
 // --- Orders ---
 
 func (u *Unit) GetOrder() Order          { return Order(u.data.OrderID()) }
-func (u *Unit) GetSecondaryOrder() Order  { return Order(u.data.SecondaryOrderID()) }
-func (u *Unit) GetBuildType() UnitType    { return UnitType(u.data.BuildTypeID()) }
+func (u *Unit) GetSecondaryOrder() Order { return Order(u.data.SecondaryOrderID()) }
+func (u *Unit) GetBuildType() UnitType   { return UnitType(u.data.BuildTypeID()) }
 
 func (u *Unit) GetTarget() *Unit {
 	idx := int(u.data.TargetIndex())

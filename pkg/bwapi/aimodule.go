@@ -26,20 +26,20 @@ type AIModule interface {
 // Embed this in your bot struct and override only the methods you need.
 type BaseModule struct{}
 
-func (BaseModule) OnStart(*Game)                           {}
-func (BaseModule) OnEnd(*Game, bool)                       {}
-func (BaseModule) OnFrame(*Game)                           {}
-func (BaseModule) OnSendText(*Game, string)                {}
-func (BaseModule) OnReceiveText(*Game, *Player, string)    {}
-func (BaseModule) OnPlayerLeft(*Game, *Player)             {}
-func (BaseModule) OnNukeDetect(*Game, Position)            {}
-func (BaseModule) OnUnitDiscover(*Game, *Unit)             {}
-func (BaseModule) OnUnitEvade(*Game, *Unit)                {}
-func (BaseModule) OnUnitShow(*Game, *Unit)                 {}
-func (BaseModule) OnUnitHide(*Game, *Unit)                 {}
-func (BaseModule) OnUnitCreate(*Game, *Unit)               {}
-func (BaseModule) OnUnitDestroy(*Game, *Unit)              {}
-func (BaseModule) OnUnitMorph(*Game, *Unit)                {}
-func (BaseModule) OnUnitRenegade(*Game, *Unit)             {}
-func (BaseModule) OnSaveGame(*Game, string)                {}
-func (BaseModule) OnUnitComplete(*Game, *Unit)             {}
+func (BaseModule) OnStart(*Game)                        {}
+func (BaseModule) OnEnd(*Game, bool)                    {}
+func (BaseModule) OnFrame(*Game)                        {}
+func (BaseModule) OnSendText(*Game, string)             {}
+func (BaseModule) OnReceiveText(*Game, *Player, string) {}
+func (BaseModule) OnPlayerLeft(*Game, *Player)          {}
+func (BaseModule) OnNukeDetect(*Game, Position)         {}
+func (BaseModule) OnUnitDiscover(*Game, *Unit)          {}
+func (BaseModule) OnUnitEvade(*Game, *Unit)             {}
+func (BaseModule) OnUnitShow(*Game, *Unit)              {}
+func (BaseModule) OnUnitHide(*Game, *Unit)              {}
+func (BaseModule) OnUnitCreate(*Game, *Unit)            {}
+func (BaseModule) OnUnitDestroy(*Game, *Unit)           {}
+func (BaseModule) OnUnitMorph(*Game, *Unit)             {}
+func (BaseModule) OnUnitRenegade(*Game, *Unit)          {}
+func (BaseModule) OnSaveGame(*Game, string)             {}
+func (BaseModule) OnUnitComplete(*Game, *Unit)          {}

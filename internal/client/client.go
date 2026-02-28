@@ -47,7 +47,6 @@ func (c *Client) Connect() error {
 		return nil
 	}
 
-	// Map the game table if not already mapped.
 	if c.gameTable == nil {
 		ptr, cleanup, err := mapGameTable()
 		if err != nil {
@@ -57,8 +56,6 @@ func (c *Client) Connect() error {
 		c.gameTableClose = cleanup
 	}
 
-	// Scan for an available game instance.
-	// Prefer the instance with the oldest keepalive time (most established).
 	bestIdx := -1
 	var bestTime uint32 = ^uint32(0)
 
@@ -84,7 +81,6 @@ func (c *Client) Connect() error {
 	inst := c.gameTable.Instance(bestIdx)
 	c.serverPID = inst.ServerProcessID()
 
-	// Map the game data shared memory.
 	dataPtr, dataClose, err := mapGameData(c.serverPID)
 	if err != nil {
 		return fmt.Errorf("map game data for PID %d: %w", c.serverPID, err)
@@ -92,7 +88,6 @@ func (c *Client) Connect() error {
 	c.data = shm.CastGameData(dataPtr)
 	c.dataClose = dataClose
 
-	// Verify protocol version.
 	if v := c.data.ClientVersion(); v != shm.BWAPIVersion {
 		c.dataClose()
 		c.data = nil
@@ -100,7 +95,6 @@ func (c *Client) Connect() error {
 		return fmt.Errorf("BWAPI version mismatch: got %d, want %d", v, shm.BWAPIVersion)
 	}
 
-	// Connect the pipe/socket.
 	pipe, err := dialPipe(c.serverPID)
 	if err != nil {
 		c.dataClose()
@@ -110,7 +104,6 @@ func (c *Client) Connect() error {
 	}
 	c.pipe = pipe
 
-	// Wait for initial server handshake.
 	if err := c.waitForServer(); err != nil {
 		c.pipe.Close()
 		c.dataClose()
@@ -120,7 +113,6 @@ func (c *Client) Connect() error {
 		return fmt.Errorf("initial handshake: %w", err)
 	}
 
-	// Mark as connected.
 	inst.SetIsConnected(true)
 	c.connected = true
 

@@ -33,13 +33,9 @@ func (bw *BWClient) Run(module AIModule) {
 	bw.game = NewGame(bw.client.Data())
 
 	for {
-		// Dispatch all events for this frame.
 		dispatchEvents(bw.game, module)
-
-		// Clear command buffers for next frame.
 		bw.game.data.ResetCommands()
 
-		// If no longer in game, reconnect for the next game.
 		if !bw.game.IsInGame() {
 			bw.client.Disconnect()
 			log.Println("Game ended. Waiting for next game...")
@@ -48,7 +44,6 @@ func (bw *BWClient) Run(module AIModule) {
 			continue
 		}
 
-		// Synchronize with the server: send commands, wait for next frame.
 		if err := bw.client.Update(); err != nil {
 			log.Printf("Connection lost: %v", err)
 			bw.client.Disconnect()

@@ -23,45 +23,45 @@ const (
 	UpgradeTypeU238Shells            UpgradeType = 16
 	UpgradeTypeIonThrusters          UpgradeType = 17
 	// 18 is skipped
-	UpgradeTypeTitanReactor          UpgradeType = 19
-	UpgradeTypeOcularImplants        UpgradeType = 20
-	UpgradeTypeMoebiusReactor        UpgradeType = 21
-	UpgradeTypeApolloReactor         UpgradeType = 22
-	UpgradeTypeColossusReactor       UpgradeType = 23
-	UpgradeTypeVentralSacs           UpgradeType = 24
-	UpgradeTypeAntennae              UpgradeType = 25
-	UpgradeTypePneumatizedCarapace   UpgradeType = 26
-	UpgradeTypeMetabolicBoost        UpgradeType = 27
-	UpgradeTypeAdrenalGlands         UpgradeType = 28
-	UpgradeTypeMuscularAugments      UpgradeType = 29
-	UpgradeTypeGroovedSpines         UpgradeType = 30
-	UpgradeTypeGameteMeiosis         UpgradeType = 31
-	UpgradeTypeMetasynapticNode      UpgradeType = 32
-	UpgradeTypeSingularityCharge     UpgradeType = 33
-	UpgradeTypeLegEnhancements       UpgradeType = 34
-	UpgradeTypeScarabDamage          UpgradeType = 35
-	UpgradeTypeReaverCapacity        UpgradeType = 36
-	UpgradeTypeGraviticDrive         UpgradeType = 37
-	UpgradeTypeSensorArray           UpgradeType = 38
-	UpgradeTypeGraviticBoosters      UpgradeType = 39
-	UpgradeTypeKhaydarinAmulet       UpgradeType = 40
-	UpgradeTypeApialSensors          UpgradeType = 41
-	UpgradeTypeGraviticThrusters     UpgradeType = 42
-	UpgradeTypeCarrierCapacity       UpgradeType = 43
-	UpgradeTypeKhaydarinCore         UpgradeType = 44
+	UpgradeTypeTitanReactor        UpgradeType = 19
+	UpgradeTypeOcularImplants      UpgradeType = 20
+	UpgradeTypeMoebiusReactor      UpgradeType = 21
+	UpgradeTypeApolloReactor       UpgradeType = 22
+	UpgradeTypeColossusReactor     UpgradeType = 23
+	UpgradeTypeVentralSacs         UpgradeType = 24
+	UpgradeTypeAntennae            UpgradeType = 25
+	UpgradeTypePneumatizedCarapace UpgradeType = 26
+	UpgradeTypeMetabolicBoost      UpgradeType = 27
+	UpgradeTypeAdrenalGlands       UpgradeType = 28
+	UpgradeTypeMuscularAugments    UpgradeType = 29
+	UpgradeTypeGroovedSpines       UpgradeType = 30
+	UpgradeTypeGameteMeiosis       UpgradeType = 31
+	UpgradeTypeMetasynapticNode    UpgradeType = 32
+	UpgradeTypeSingularityCharge   UpgradeType = 33
+	UpgradeTypeLegEnhancements     UpgradeType = 34
+	UpgradeTypeScarabDamage        UpgradeType = 35
+	UpgradeTypeReaverCapacity      UpgradeType = 36
+	UpgradeTypeGraviticDrive       UpgradeType = 37
+	UpgradeTypeSensorArray         UpgradeType = 38
+	UpgradeTypeGraviticBoosters    UpgradeType = 39
+	UpgradeTypeKhaydarinAmulet     UpgradeType = 40
+	UpgradeTypeApialSensors        UpgradeType = 41
+	UpgradeTypeGraviticThrusters   UpgradeType = 42
+	UpgradeTypeCarrierCapacity     UpgradeType = 43
+	UpgradeTypeKhaydarinCore       UpgradeType = 44
 	// 45-46 are skipped
-	UpgradeTypeArgusJewel            UpgradeType = 47
+	UpgradeTypeArgusJewel UpgradeType = 47
 	// 48 is skipped
-	UpgradeTypeArgusTalisman         UpgradeType = 49
+	UpgradeTypeArgusTalisman UpgradeType = 49
 	// 50 is skipped
-	UpgradeTypeCaduceusReactor       UpgradeType = 51
-	UpgradeTypeChitinousPlating      UpgradeType = 52
-	UpgradeTypeAnabolicSynthesis     UpgradeType = 53
-	UpgradeTypeCharonBoosters        UpgradeType = 54
+	UpgradeTypeCaduceusReactor   UpgradeType = 51
+	UpgradeTypeChitinousPlating  UpgradeType = 52
+	UpgradeTypeAnabolicSynthesis UpgradeType = 53
+	UpgradeTypeCharonBoosters    UpgradeType = 54
 	// 55-59 are skipped
-	UpgradeTypeUpgrade60             UpgradeType = 60
-	UpgradeTypeNone                  UpgradeType = 61
-	UpgradeTypeUnknown               UpgradeType = 62
+	UpgradeTypeUpgrade60 UpgradeType = 60
+	UpgradeTypeNone      UpgradeType = 61
+	UpgradeTypeUnknown   UpgradeType = 62
 )
 
 func (u UpgradeType) String() string {

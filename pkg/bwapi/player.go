@@ -11,18 +11,18 @@ type Player struct {
 	index int
 }
 
-func (p *Player) Index() int       { return p.index }
-func (p *Player) Name() string     { return p.data.Name() }
-func (p *Player) GetRace() Race    { return Race(p.data.RaceID()) }
-func (p *Player) IsNeutral() bool  { return p.data.IsNeutral() }
+func (p *Player) Index() int      { return p.index }
+func (p *Player) Name() string    { return p.data.Name() }
+func (p *Player) GetRace() Race   { return Race(p.data.RaceID()) }
+func (p *Player) IsNeutral() bool { return p.data.IsNeutral() }
 
 func (p *Player) GetStartLocation() TilePosition {
 	return TilePosition{X: p.data.StartLocationX(), Y: p.data.StartLocationY()}
 }
 
-func (p *Player) IsVictorious() bool    { return p.data.IsVictorious() }
-func (p *Player) IsDefeated() bool      { return p.data.IsDefeated() }
-func (p *Player) LeftGame() bool        { return p.data.LeftGame() }
+func (p *Player) IsVictorious() bool { return p.data.IsVictorious() }
+func (p *Player) IsDefeated() bool   { return p.data.IsDefeated() }
+func (p *Player) LeftGame() bool     { return p.data.LeftGame() }
 
 // --- Resources ---
 
@@ -107,7 +107,7 @@ func (p *Player) TotalUnitScore() int     { return int(p.data.TotalUnitScore()) 
 func (p *Player) TotalKillScore() int     { return int(p.data.TotalKillScore()) }
 func (p *Player) TotalBuildingScore() int { return int(p.data.TotalBuildingScore()) }
 func (p *Player) TotalRazingScore() int   { return int(p.data.TotalRazingScore()) }
-func (p *Player) CustomScore() int         { return int(p.data.CustomScore()) }
+func (p *Player) CustomScore() int        { return int(p.data.CustomScore()) }
 
 // --- Alliance ---
 

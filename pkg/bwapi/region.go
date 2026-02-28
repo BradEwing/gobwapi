@@ -10,11 +10,11 @@ type Region struct {
 	game *Game
 }
 
-func (r *Region) ID() int           { return int(r.data.ID()) }
-func (r *Region) IslandID() int     { return int(r.data.IslandID()) }
-func (r *Region) IsAccessible() bool { return r.data.IsAccessible() }
+func (r *Region) ID() int              { return int(r.data.ID()) }
+func (r *Region) IslandID() int        { return int(r.data.IslandID()) }
+func (r *Region) IsAccessible() bool   { return r.data.IsAccessible() }
 func (r *Region) IsHigherGround() bool { return r.data.IsHigherGround() }
-func (r *Region) Priority() int      { return int(r.data.Priority()) }
+func (r *Region) Priority() int        { return int(r.data.Priority()) }
 
 func (r *Region) GetCenter() Position {
 	return Position{X: r.data.CenterX(), Y: r.data.CenterY()}

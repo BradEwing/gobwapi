@@ -32,28 +32,28 @@ func (g *Game) FrameCount() int     { return int(g.data.FrameCount()) }
 func (g *Game) FPS() int            { return int(g.data.FPS()) }
 func (g *Game) AverageFPS() float64 { return g.data.AverageFPS() }
 func (g *Game) IsInGame() bool      { return g.data.IsInGame() }
-func (g *Game) IsMultiplayer() bool  { return g.data.IsMultiplayer() }
-func (g *Game) IsReplay() bool       { return g.data.IsReplay() }
-func (g *Game) IsPaused() bool       { return g.data.IsPaused() }
-func (g *Game) IsBattleNet() bool    { return g.data.IsBattleNet() }
+func (g *Game) IsMultiplayer() bool { return g.data.IsMultiplayer() }
+func (g *Game) IsReplay() bool      { return g.data.IsReplay() }
+func (g *Game) IsPaused() bool      { return g.data.IsPaused() }
+func (g *Game) IsBattleNet() bool   { return g.data.IsBattleNet() }
 
-func (g *Game) Latency() int            { return int(g.data.Latency()) }
-func (g *Game) LatencyFrames() int      { return int(g.data.LatencyFrames()) }
-func (g *Game) HasLatCom() bool          { return g.data.HasLatCom() }
-func (g *Game) HasGUI() bool             { return g.data.HasGUI() }
-func (g *Game) RandomSeed() uint32       { return g.data.RandomSeed() }
-func (g *Game) ReplayFrameCount() int    { return int(g.data.ReplayFrameCount()) }
-func (g *Game) ElapsedTime() int         { return int(g.data.ElapsedTime()) }
-func (g *Game) CountdownTimer() int      { return int(g.data.CountdownTimer()) }
+func (g *Game) Latency() int          { return int(g.data.Latency()) }
+func (g *Game) LatencyFrames() int    { return int(g.data.LatencyFrames()) }
+func (g *Game) HasLatCom() bool       { return g.data.HasLatCom() }
+func (g *Game) HasGUI() bool          { return g.data.HasGUI() }
+func (g *Game) RandomSeed() uint32    { return g.data.RandomSeed() }
+func (g *Game) ReplayFrameCount() int { return int(g.data.ReplayFrameCount()) }
+func (g *Game) ElapsedTime() int      { return int(g.data.ElapsedTime()) }
+func (g *Game) CountdownTimer() int   { return int(g.data.CountdownTimer()) }
 
 // --- Map Info ---
 
 func (g *Game) MapWidth() int       { return int(g.data.MapWidth()) }
 func (g *Game) MapHeight() int      { return int(g.data.MapHeight()) }
-func (g *Game) MapFileName() string  { return g.data.MapFileName() }
-func (g *Game) MapPathName() string  { return g.data.MapPathName() }
-func (g *Game) MapName() string      { return g.data.MapName() }
-func (g *Game) MapHash() string      { return g.data.MapHash() }
+func (g *Game) MapFileName() string { return g.data.MapFileName() }
+func (g *Game) MapPathName() string { return g.data.MapPathName() }
+func (g *Game) MapName() string     { return g.data.MapName() }
+func (g *Game) MapHash() string     { return g.data.MapHash() }
 
 func (g *Game) GetGroundHeight(tileX, tileY int) int {
 	return int(g.data.GetGroundHeight(tileX, tileY))
@@ -200,10 +200,10 @@ func (g *Game) GetNukeDots() []Position {
 
 // --- Input ---
 
-func (g *Game) MouseX() int    { return int(g.data.MouseX()) }
-func (g *Game) MouseY() int    { return int(g.data.MouseY()) }
-func (g *Game) ScreenX() int   { return int(g.data.ScreenX()) }
-func (g *Game) ScreenY() int   { return int(g.data.ScreenY()) }
+func (g *Game) MouseX() int  { return int(g.data.MouseX()) }
+func (g *Game) MouseY() int  { return int(g.data.MouseY()) }
+func (g *Game) ScreenX() int { return int(g.data.ScreenX()) }
+func (g *Game) ScreenY() int { return int(g.data.ScreenY()) }
 
 // --- Commands ---
 

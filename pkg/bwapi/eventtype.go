@@ -4,25 +4,25 @@ package bwapi
 type EventType int32
 
 const (
-	EventTypeMatchStart  EventType = 0
-	EventTypeMatchEnd    EventType = 1
-	EventTypeMatchFrame  EventType = 2
-	EventTypeMenuFrame   EventType = 3
-	EventTypeSendText    EventType = 4
-	EventTypeReceiveText EventType = 5
-	EventTypePlayerLeft  EventType = 6
-	EventTypeNukeDetect  EventType = 7
+	EventTypeMatchStart   EventType = 0
+	EventTypeMatchEnd     EventType = 1
+	EventTypeMatchFrame   EventType = 2
+	EventTypeMenuFrame    EventType = 3
+	EventTypeSendText     EventType = 4
+	EventTypeReceiveText  EventType = 5
+	EventTypePlayerLeft   EventType = 6
+	EventTypeNukeDetect   EventType = 7
 	EventTypeUnitDiscover EventType = 8
-	EventTypeUnitEvade   EventType = 9
-	EventTypeUnitShow    EventType = 10
-	EventTypeUnitHide    EventType = 11
-	EventTypeUnitCreate  EventType = 12
-	EventTypeUnitDestroy EventType = 13
-	EventTypeUnitMorph   EventType = 14
+	EventTypeUnitEvade    EventType = 9
+	EventTypeUnitShow     EventType = 10
+	EventTypeUnitHide     EventType = 11
+	EventTypeUnitCreate   EventType = 12
+	EventTypeUnitDestroy  EventType = 13
+	EventTypeUnitMorph    EventType = 14
 	EventTypeUnitRenegade EventType = 15
-	EventTypeSaveGame    EventType = 16
+	EventTypeSaveGame     EventType = 16
 	EventTypeUnitComplete EventType = 17
-	EventTypeNone        EventType = 18
+	EventTypeNone         EventType = 18
 )
 
 func (e EventType) String() string {

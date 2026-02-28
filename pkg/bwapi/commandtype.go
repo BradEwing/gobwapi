@@ -4,25 +4,25 @@ package bwapi
 type CommandType int32
 
 const (
-	CommandTypeNone                      CommandType = 0
-	CommandTypeSetScreenPosition         CommandType = 1
-	CommandTypePingMinimap               CommandType = 2
-	CommandTypeEnableFlag                CommandType = 3
-	CommandTypePrintf                    CommandType = 4
-	CommandTypeSendText                  CommandType = 5
-	CommandTypePauseGame                 CommandType = 6
-	CommandTypeResumeGame                CommandType = 7
-	CommandTypeLeaveGame                 CommandType = 8
-	CommandTypeRestartGame               CommandType = 9
-	CommandTypeSetLocalSpeed             CommandType = 10
-	CommandTypeSetLatCom                 CommandType = 11
-	CommandTypeSetGui                    CommandType = 12
-	CommandTypeSetFrameSkip              CommandType = 13
-	CommandTypeSetMap                    CommandType = 14
-	CommandTypeSetAllies                 CommandType = 15
-	CommandTypeSetVision                 CommandType = 16
-	CommandTypeSetCommandOptimizerLevel  CommandType = 17
-	CommandTypeSetRevealAll              CommandType = 18
+	CommandTypeNone                     CommandType = 0
+	CommandTypeSetScreenPosition        CommandType = 1
+	CommandTypePingMinimap              CommandType = 2
+	CommandTypeEnableFlag               CommandType = 3
+	CommandTypePrintf                   CommandType = 4
+	CommandTypeSendText                 CommandType = 5
+	CommandTypePauseGame                CommandType = 6
+	CommandTypeResumeGame               CommandType = 7
+	CommandTypeLeaveGame                CommandType = 8
+	CommandTypeRestartGame              CommandType = 9
+	CommandTypeSetLocalSpeed            CommandType = 10
+	CommandTypeSetLatCom                CommandType = 11
+	CommandTypeSetGui                   CommandType = 12
+	CommandTypeSetFrameSkip             CommandType = 13
+	CommandTypeSetMap                   CommandType = 14
+	CommandTypeSetAllies                CommandType = 15
+	CommandTypeSetVision                CommandType = 16
+	CommandTypeSetCommandOptimizerLevel CommandType = 17
+	CommandTypeSetRevealAll             CommandType = 18
 )
 
 func (c CommandType) String() string {

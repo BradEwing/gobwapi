@@ -20,9 +20,8 @@ func (b *ExampleBot) OnStart(game *bwapi.Game) {
 		log.Printf("Playing as: %s (%s)", self.Name(), self.GetRace())
 	}
 
-	// Enable complete map information for debugging.
-	game.EnableFlag(0) // CompleteMapInformation
-	game.EnableFlag(1) // UserInput
+	game.EnableFlag(0)
+	game.EnableFlag(1)
 
 	game.SetLocalSpeed(20)
 }
@@ -45,7 +44,6 @@ func (b *ExampleBot) OnFrame(game *bwapi.Game) {
 	game.DrawTextScreen(10, 20, fmt.Sprintf("Minerals: %d  Gas: %d", self.Minerals(), self.Gas()))
 	game.DrawTextScreen(10, 30, fmt.Sprintf("Supply: %d/%d", self.SupplyUsed(), self.SupplyTotal()))
 
-	// Send idle workers to gather minerals.
 	units := game.GetAllUnits()
 	for _, unit := range units {
 		if unit.GetPlayer() == nil || unit.GetPlayer().Index() != self.Index() {
@@ -64,7 +62,6 @@ func (b *ExampleBot) OnFrame(game *bwapi.Game) {
 			continue
 		}
 
-		// Find nearest mineral patch.
 		var bestMineral *bwapi.Unit
 		bestDist := int32(1<<31 - 1)
 		for _, other := range units {

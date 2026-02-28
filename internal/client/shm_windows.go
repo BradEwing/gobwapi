@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	kernel32         = syscall.NewLazyDLL("kernel32.dll")
+	kernel32            = syscall.NewLazyDLL("kernel32.dll")
 	procOpenFileMapping = kernel32.NewProc("OpenFileMappingA")
 	procMapViewOfFile   = kernel32.NewProc("MapViewOfFile")
 	procUnmapViewOfFile = kernel32.NewProc("UnmapViewOfFile")
@@ -44,7 +44,7 @@ func mapSharedMemory(name string, size int) (unsafe.Pointer, func(), error) {
 
 	handle, _, err := procOpenFileMapping.Call(
 		uintptr(fileMapAllAccess),
-		0, // bInheritHandle = FALSE
+		0,
 		uintptr(unsafe.Pointer(namePtr)),
 	)
 	if handle == 0 {
@@ -54,7 +54,7 @@ func mapSharedMemory(name string, size int) (unsafe.Pointer, func(), error) {
 	ptr, _, err := procMapViewOfFile.Call(
 		handle,
 		uintptr(fileMapAllAccess),
-		0, 0, // offset
+		0, 0,
 		uintptr(size),
 	)
 	if ptr == 0 {
