@@ -37,8 +37,8 @@ func (bw *BWClient) Run(module AIModule) {
 		inGame := bw.game.IsInGame()
 
 		if inGame || wasInGame {
-			dispatchEvents(bw.game, module)
 			bw.game.data.ResetCommands()
+			dispatchEvents(bw.game, module)
 		}
 
 		if wasInGame && !inGame {
