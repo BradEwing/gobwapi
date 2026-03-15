@@ -31,12 +31,18 @@ func (bw *BWClient) Run(module AIModule) {
 	bw.client.Reconnect()
 
 	bw.game = NewGame(bw.client.Data())
+	wasInGame := false
 
 	for {
-		dispatchEvents(bw.game, module)
-		bw.game.data.ResetCommands()
+		inGame := bw.game.IsInGame()
 
-		if !bw.game.IsInGame() {
+		if inGame || wasInGame {
+			dispatchEvents(bw.game, module)
+			bw.game.data.ResetCommands()
+		}
+
+		if wasInGame && !inGame {
+			wasInGame = false
 			bw.client.Disconnect()
 			log.Println("Game ended. Waiting for next game...")
 			bw.client.Reconnect()
@@ -44,12 +50,15 @@ func (bw *BWClient) Run(module AIModule) {
 			continue
 		}
 
+		wasInGame = inGame
+
 		if err := bw.client.Update(); err != nil {
 			log.Printf("Connection lost: %v", err)
 			bw.client.Disconnect()
 			log.Println("Reconnecting...")
 			bw.client.Reconnect()
 			bw.game = NewGame(bw.client.Data())
+			wasInGame = false
 		}
 	}
 }
