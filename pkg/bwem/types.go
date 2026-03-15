@@ -17,18 +17,18 @@ type MiniTile struct {
 	Walkable bool
 	AreaID   AreaId
 	Alt      Altitude
-	Sea      bool // true if part of sea (large unwalkable body)
-	Lake     bool // true if part of lake (small enclosed unwalkable body)
+	Sea      bool
+	Lake     bool
 }
 
 // Tile represents a build-tile (32x32 pixels, contains 4x4 MiniTiles).
 type Tile struct {
 	Buildable    bool
-	GroundHeight int8 // 0, 1, or 2
+	GroundHeight int8
 	Doodad       bool
-	AreaID       AreaId   // most common area among sub-MiniTiles, 0 if mixed
-	NeutralIdx   int      // index into Map.neutrals, -1 if none
-	MinAltitude  Altitude // minimum altitude among 4x4 sub-MiniTiles
+	AreaID       AreaId
+	NeutralIdx   int
+	MinAltitude  Altitude
 }
 
 // Neutral represents a neutral unit on the map (mineral, geyser, or static building).
@@ -44,16 +44,16 @@ type Neutral struct {
 
 // Mineral is a mineral patch tracked by BWEM.
 type Mineral struct {
-	NeutralIdx int // index into Map.neutrals
-	Resources  int // resources at analysis time (frame 0)
-	BaseIdx    int // index into Map.bases, -1 if unassigned
+	NeutralIdx int
+	Resources  int
+	BaseIdx    int
 }
 
 // Geyser is a vespene geyser tracked by BWEM.
 type Geyser struct {
 	NeutralIdx int
 	Resources  int
-	BaseIdx    int // -1 if unassigned
+	BaseIdx    int
 }
 
 // StaticBuilding is an unbuildable neutral building on the map.

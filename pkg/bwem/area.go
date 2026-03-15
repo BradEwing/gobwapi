@@ -6,7 +6,7 @@ import "github.com/bradewing/gobwapi/pkg/bwapi"
 type Area struct {
 	ID          AreaId
 	GroupID     GroupId
-	Top         bwapi.WalkPosition // highest altitude point
+	Top         bwapi.WalkPosition
 	TopAltitude Altitude
 
 	MiniTileCount       int
@@ -15,12 +15,12 @@ type Area struct {
 	HighGroundTiles     int
 	VeryHighGroundTiles int
 
-	ChokePointIdxs []int    // indices into Map.chokePoints
-	NeighborIDs    []AreaId // accessible neighbor area IDs
+	ChokePointIdxs []int
+	NeighborIDs    []AreaId
 
-	BaseIdxs    []int // indices into Map.bases
-	MineralIdxs []int // indices into Map.minerals
-	GeyserIdxs  []int // indices into Map.geysers
+	BaseIdxs    []int
+	MineralIdxs []int
+	GeyserIdxs  []int
 
 	TopLeft     bwapi.TilePosition
 	BottomRight bwapi.TilePosition

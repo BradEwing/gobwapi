@@ -13,8 +13,8 @@ type Map struct {
 
 	startLocations []bwapi.TilePosition
 
-	miniTiles []MiniTile // walkWidth * walkHeight
-	tiles     []Tile     // tileWidth * tileHeight
+	miniTiles []MiniTile
+	tiles     []Tile
 
 	areas       []Area
 	chokePoints []ChokePoint
@@ -28,14 +28,11 @@ type Map struct {
 }
 
 // Analyze runs the full BWEM terrain analysis and returns the completed Map.
-// Must be called during OnStart when neutral units are visible (frame 0).
 func Analyze(game *bwapi.Game) *Map {
 	m := &Map{}
 	m.analyze(game)
 	return m
 }
-
-// --- Dimensions ---
 
 func (m *Map) TileWidth() int  { return m.tileWidth }
 func (m *Map) TileHeight() int { return m.tileHeight }
@@ -46,8 +43,6 @@ func (m *Map) WalkHeight() int { return m.walkHeight }
 func (m *Map) StartLocations() []bwapi.TilePosition {
 	return m.startLocations
 }
-
-// --- Tile Access ---
 
 // GetMiniTile returns the MiniTile at a WalkPosition.
 func (m *Map) GetMiniTile(wp bwapi.WalkPosition) *MiniTile {
@@ -65,8 +60,6 @@ func (m *Map) GetTile(tp bwapi.TilePosition) *Tile {
 	return &m.tiles[m.tileIndex(tp)]
 }
 
-// --- Areas ---
-
 // Areas returns all analyzed areas.
 func (m *Map) Areas() []Area {
 	return m.areas
@@ -77,7 +70,7 @@ func (m *Map) Area(id AreaId) *Area {
 	if id <= 0 || int(id) > len(m.areas) {
 		return nil
 	}
-	return &m.areas[id-1] // AreaIds are 1-based
+	return &m.areas[id-1]
 }
 
 // AreaAt returns the area at a TilePosition, or nil.
@@ -103,7 +96,6 @@ func (m *Map) NearestArea(wp bwapi.WalkPosition) *Area {
 	if a := m.AreaAtWalk(wp); a != nil {
 		return a
 	}
-	// BFS outward until we find a MiniTile with a valid area.
 	visited := make([]bool, len(m.miniTiles))
 	queue := []bwapi.WalkPosition{wp}
 	visited[m.miniTileIndex(wp)] = true
@@ -125,14 +117,10 @@ func (m *Map) NearestArea(wp bwapi.WalkPosition) *Area {
 	return nil
 }
 
-// --- ChokePoints ---
-
 // ChokePoints returns all chokepoints.
 func (m *Map) ChokePoints() []ChokePoint {
 	return m.chokePoints
 }
-
-// --- Bases ---
 
 // Bases returns all base locations.
 func (m *Map) Bases() []Base {
@@ -150,13 +138,9 @@ func (m *Map) StartingBases() []*Base {
 	return result
 }
 
-// --- Neutrals ---
-
-func (m *Map) Neutrals() []Neutral   { return m.neutrals }
-func (m *Map) Minerals() []Mineral   { return m.minerals }
-func (m *Map) Geysers() []Geyser     { return m.geysers }
-
-// --- Pathfinding ---
+func (m *Map) Neutrals() []Neutral { return m.neutrals }
+func (m *Map) Minerals() []Mineral { return m.minerals }
+func (m *Map) Geysers() []Geyser   { return m.geysers }
 
 // GetPath returns the shortest path between two positions as a sequence of
 // chokepoints, along with the total ground distance in pixels.
@@ -174,8 +158,6 @@ func (m *Map) GetPath(from, to bwapi.Position) ([]*ChokePoint, int) {
 		return nil, -1
 	}
 
-	// Find the best pair of chokepoints (one from each area's set)
-	// using the precomputed distance matrix.
 	bestDist := -1
 	bestFrom := -1
 	bestTo := -1
@@ -201,20 +183,15 @@ func (m *Map) GetPath(from, to bwapi.Position) ([]*ChokePoint, int) {
 	return result, bestDist
 }
 
-// --- Dynamic Updates ---
-
 // OnMineralDestroyed should be called when a mineral patch is destroyed.
-// Updates base resource assignments and chokepoint blocking state.
 func (m *Map) OnMineralDestroyed(unit *bwapi.Unit) {
 	for i := range m.minerals {
 		n := &m.neutrals[m.minerals[i].NeutralIdx]
 		if n.Unit == unit {
-			// Remove from base
 			if m.minerals[i].BaseIdx >= 0 {
 				base := &m.bases[m.minerals[i].BaseIdx]
 				base.MineralIdxs = removeInt(base.MineralIdxs, i)
 			}
-			// Check if this was a blocking neutral
 			if n.Blocking {
 				m.unblockNeutral(m.minerals[i].NeutralIdx)
 			}
@@ -236,7 +213,6 @@ func (m *Map) OnStaticBuildingDestroyed(unit *bwapi.Unit) {
 	}
 }
 
-// unblockNeutral marks pseudo-chokepoints associated with a neutral as unblocked.
 func (m *Map) unblockNeutral(neutralIdx int) {
 	for i := range m.chokePoints {
 		if m.chokePoints[i].NeutralIdx == neutralIdx {

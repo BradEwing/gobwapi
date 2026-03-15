@@ -8,14 +8,14 @@ type ChokePoint struct {
 	AreaIDs [2]AreaId
 
 	End1   bwapi.WalkPosition
-	Middle bwapi.WalkPosition // highest altitude = narrowest point
+	Middle bwapi.WalkPosition
 	End2   bwapi.WalkPosition
 
-	Geometry []bwapi.WalkPosition // full frontier line
+	Geometry []bwapi.WalkPosition
 
 	Blocked    bool
 	Pseudo     bool
-	NeutralIdx int // index into Map.neutrals, -1 if not blocking
+	NeutralIdx int
 }
 
 // MiddlePos returns the middle node as a pixel Position.

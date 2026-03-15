@@ -5,12 +5,12 @@ import "github.com/bradewing/gobwapi/pkg/bwapi"
 // Base represents a potential base location (Command Center placement).
 type Base struct {
 	Index           int
-	Location        bwapi.TilePosition // top-left of CC footprint
-	Center          bwapi.Position     // pixel center of CC
+	Location        bwapi.TilePosition
+	Center          bwapi.Position
 	AreaID          AreaId
 	IsStartLocation bool
-	MineralIdxs     []int // indices into Map.minerals
-	GeyserIdxs      []int // indices into Map.geysers
+	MineralIdxs     []int
+	GeyserIdxs      []int
 }
 
 // Area returns this base's area.

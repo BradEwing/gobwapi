@@ -17,8 +17,6 @@ func isSpecialBuilding(ut bwapi.UnitType) bool {
 	case bwapi.UnitTypeSpecialIndependantStarport:
 		return true
 	}
-	// Check if the unit is a non-resource, non-critter neutral building.
-	// Critters are mobile units, not buildings — they don't block terrain.
 	return false
 }
 

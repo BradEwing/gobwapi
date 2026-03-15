@@ -11,7 +11,6 @@ const (
 	maxTilesBetweenCCAndRes = 10
 	chokeClusterDistSq      = 300
 
-	// Command Center footprint in tiles.
 	ccTileWidth  = 4
 	ccTileHeight = 3
 )

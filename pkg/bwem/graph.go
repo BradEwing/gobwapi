@@ -6,18 +6,11 @@ import (
 	"github.com/bradewing/gobwapi/pkg/bwapi"
 )
 
-// graph holds the precomputed chokepoint distance matrix and path lookup.
 type graph struct {
-	// dist[i][j] = shortest ground distance (pixels) between chokepoints i and j.
-	// -1 if unreachable.
-	dist [][]int
-
-	// nextCP[i][j] = next chokepoint index on the shortest path from i to j.
-	// Used for O(1) path reconstruction.
+	dist   [][]int
 	nextCP [][]int
 }
 
-// getDistance returns the precomputed distance between two chokepoints.
 func (g *graph) getDistance(fromCP, toCP int) int {
 	if fromCP >= len(g.dist) || toCP >= len(g.dist) {
 		return -1
@@ -25,8 +18,6 @@ func (g *graph) getDistance(fromCP, toCP int) int {
 	return g.dist[fromCP][toCP]
 }
 
-// getPath reconstructs the shortest path between two chokepoints as a slice
-// of chokepoint indices (inclusive of both endpoints).
 func (g *graph) getPath(fromCP, toCP int) []int {
 	if fromCP == toCP {
 		return []int{fromCP}
@@ -41,7 +32,7 @@ func (g *graph) getPath(fromCP, toCP int) []int {
 		path = append(path, cur)
 		next := g.nextCP[cur][toCP]
 		if next < 0 || next == cur {
-			return nil // should not happen
+			return nil
 		}
 		cur = next
 	}
@@ -49,14 +40,12 @@ func (g *graph) getPath(fromCP, toCP int) []int {
 	return path
 }
 
-// computeChokePointDistanceMatrix builds the all-pairs shortest path matrix.
 func (g *graph) computeChokePointDistanceMatrix(m *Map) {
 	n := len(m.chokePoints)
 	if n == 0 {
 		return
 	}
 
-	// Initialize matrices.
 	g.dist = make([][]int, n)
 	g.nextCP = make([][]int, n)
 	for i := 0; i < n; i++ {
@@ -73,8 +62,6 @@ func (g *graph) computeChokePointDistanceMatrix(m *Map) {
 		}
 	}
 
-	// Phase 1: For each area, compute within-area distances between all
-	// chokepoints bordering that area using BFS on walkable MiniTiles.
 	for areaIdx := range m.areas {
 		area := &m.areas[areaIdx]
 		if len(area.ChokePointIdxs) < 2 {
@@ -83,7 +70,6 @@ func (g *graph) computeChokePointDistanceMatrix(m *Map) {
 		m.computeWithinAreaDistances(area, g)
 	}
 
-	// Phase 2: Floyd-Warshall for all-pairs shortest paths.
 	for k := 0; k < n; k++ {
 		for i := 0; i < n; i++ {
 			if g.dist[i][k] < 0 {
@@ -103,12 +89,8 @@ func (g *graph) computeChokePointDistanceMatrix(m *Map) {
 	}
 }
 
-// computeWithinAreaDistances computes ground distances between chokepoints
-// within a single area using Dijkstra from each chokepoint's middle position.
 func (m *Map) computeWithinAreaDistances(area *Area, g *graph) {
-	// For each chokepoint in this area, BFS/Dijkstra to find distances to
-	// other chokepoints in the same area.
-	cpMiddles := make(map[int]int) // miniTileIndex -> chokepoint index
+	cpMiddles := make(map[int]int)
 	for _, cpIdx := range area.ChokePointIdxs {
 		cp := &m.chokePoints[cpIdx]
 		mi := m.miniTileIndex(cp.Middle)
@@ -118,8 +100,7 @@ func (m *Map) computeWithinAreaDistances(area *Area, g *graph) {
 	for _, srcCPIdx := range area.ChokePointIdxs {
 		srcCP := &m.chokePoints[srcCPIdx]
 
-		// Dijkstra from srcCP.Middle within this area.
-		dist := make(map[int]int) // miniTileIndex -> distance
+		dist := make(map[int]int)
 		pq := &graphPQ{}
 		heap.Init(pq)
 
@@ -128,17 +109,15 @@ func (m *Map) computeWithinAreaDistances(area *Area, g *graph) {
 		heap.Push(pq, graphPQItem{node: startIdx, dist: 0})
 
 		found := 0
-		target := len(area.ChokePointIdxs) - 1 // exclude self
+		target := len(area.ChokePointIdxs) - 1
 
 		for pq.Len() > 0 && found < target {
 			item := heap.Pop(pq).(graphPQItem)
 			if item.dist > dist[item.node] {
-				continue // stale entry
+				continue
 			}
 
-			// Check if we reached another chokepoint.
 			if dstCPIdx, ok := cpMiddles[item.node]; ok && dstCPIdx != srcCPIdx {
-				// Record the distance (symmetric).
 				if g.dist[srcCPIdx][dstCPIdx] < 0 || item.dist < g.dist[srcCPIdx][dstCPIdx] {
 					g.dist[srcCPIdx][dstCPIdx] = item.dist
 					g.dist[dstCPIdx][srcCPIdx] = item.dist
@@ -148,7 +127,6 @@ func (m *Map) computeWithinAreaDistances(area *Area, g *graph) {
 				found++
 			}
 
-			// Expand neighbors within this area.
 			curWP := indexToWalk(item.node, m.walkWidth)
 			for _, n := range m.walkNeighbors8(curWP) {
 				ni := m.miniTileIndex(n)
@@ -156,7 +134,6 @@ func (m *Map) computeWithinAreaDistances(area *Area, g *graph) {
 				if !mt.Walkable || (mt.AreaID != area.ID && mt.AreaID > 0) {
 					continue
 				}
-				// Distance: 8 pixels for cardinal, 11 (~8*sqrt2) for diagonal.
 				dx := n.X - curWP.X
 				dy := n.Y - curWP.Y
 				cost := 8
@@ -173,7 +150,6 @@ func (m *Map) computeWithinAreaDistances(area *Area, g *graph) {
 	}
 }
 
-// indexToWalk converts a flat miniTile index back to a WalkPosition.
 func indexToWalk(idx, walkWidth int) bwapi.WalkPosition {
 	return bwapi.WalkPosition{
 		X: int32(idx % walkWidth),
@@ -181,14 +157,12 @@ func indexToWalk(idx, walkWidth int) bwapi.WalkPosition {
 	}
 }
 
-// computeGroupIds assigns GroupIds to areas via DFS over chokepoint connectivity.
 func (g *graph) computeGroupIds(m *Map) {
 	nextGroup := GroupId(1)
 	for i := range m.areas {
 		if m.areas[i].GroupID > 0 {
 			continue
 		}
-		// DFS from this area.
 		m.areas[i].GroupID = nextGroup
 		stack := []AreaId{m.areas[i].ID}
 		for len(stack) > 0 {
@@ -215,7 +189,6 @@ func (g *graph) computeGroupIds(m *Map) {
 		nextGroup++
 	}
 
-	// Populate NeighborIDs for each area.
 	for i := range m.areas {
 		area := &m.areas[i]
 		seen := make(map[AreaId]bool)

@@ -8,24 +8,21 @@ import (
 	"github.com/bradewing/gobwapi/pkg/bwapi"
 )
 
-// analyze runs the full 13-step BWEM pipeline.
 func (m *Map) analyze(game *bwapi.Game) {
-	m.initializeTerrainData(game)      // 1
-	m.markUnwalkableMiniTiles(game)    // 2
-	m.markBuildableTilesAndGH(game)    // 3
-	m.decideSeasOrLakes()              // 4
-	m.initializeNeutralData(game)      // 5
-	m.computeAltitude()                // 6
-	m.processBlockingNeutrals()        // 7
-	temps, fronts := m.computeTempAreas() // 8
-	m.computeAreas(temps)              // 9
-	m.createChokePoints(fronts)        // 10
-	m.gr.computeChokePointDistanceMatrix(m) // 11
-	m.gr.computeGroupIds(m)            // 12
-	m.createBases()                    // 13
+	m.initializeTerrainData(game)
+	m.markUnwalkableMiniTiles(game)
+	m.markBuildableTilesAndGH(game)
+	m.decideSeasOrLakes()
+	m.initializeNeutralData(game)
+	m.computeAltitude()
+	m.processBlockingNeutrals()
+	temps, fronts := m.computeTempAreas()
+	m.computeAreas(temps)
+	m.createChokePoints(fronts)
+	m.gr.computeChokePointDistanceMatrix(m)
+	m.gr.computeGroupIds(m)
+	m.createBases()
 }
-
-// --- Step 1: Initialize terrain data ---
 
 func (m *Map) initializeTerrainData(game *bwapi.Game) {
 	m.tileWidth = game.MapWidth()
@@ -40,18 +37,13 @@ func (m *Map) initializeTerrainData(game *bwapi.Game) {
 	}
 }
 
-// --- Step 2: Mark unwalkable MiniTiles ---
-
 func (m *Map) markUnwalkableMiniTiles(game *bwapi.Game) {
-	// First pass: read walkability from BWAPI.
 	for y := 0; y < m.walkHeight; y++ {
 		for x := 0; x < m.walkWidth; x++ {
 			m.miniTiles[y*m.walkWidth+x].Walkable = game.IsWalkable(x, y)
 		}
 	}
 
-	// Second pass: spread unwalkability to 8 neighbors.
-	// Use a snapshot to avoid cascade.
 	snapshot := make([]bool, len(m.miniTiles))
 	for i, mt := range m.miniTiles {
 		snapshot[i] = mt.Walkable
@@ -60,9 +52,8 @@ func (m *Map) markUnwalkableMiniTiles(game *bwapi.Game) {
 	for y := 0; y < m.walkHeight; y++ {
 		for x := 0; x < m.walkWidth; x++ {
 			if snapshot[y*m.walkWidth+x] {
-				continue // walkable, skip
+				continue
 			}
-			// Mark all 8 neighbors as unwalkable.
 			wp := bwapi.WalkPosition{X: int32(x), Y: int32(y)}
 			for _, n := range m.walkNeighbors8(wp) {
 				m.miniTiles[m.miniTileIndex(n)].Walkable = false
@@ -70,8 +61,6 @@ func (m *Map) markUnwalkableMiniTiles(game *bwapi.Game) {
 		}
 	}
 }
-
-// --- Step 3: Mark buildable tiles and ground height ---
 
 func (m *Map) markBuildableTilesAndGH(game *bwapi.Game) {
 	for ty := 0; ty < m.tileHeight; ty++ {
@@ -84,7 +73,6 @@ func (m *Map) markBuildableTilesAndGH(game *bwapi.Game) {
 			t.GroundHeight = int8(raw / 2)
 			t.Doodad = raw%2 == 1
 
-			// If buildable, force all 4x4 sub-MiniTiles walkable.
 			if t.Buildable {
 				for dy := 0; dy < 4; dy++ {
 					for dx := 0; dx < 4; dx++ {
@@ -100,8 +88,6 @@ func (m *Map) markBuildableTilesAndGH(game *bwapi.Game) {
 	}
 }
 
-// --- Step 4: Decide seas or lakes ---
-
 func (m *Map) decideSeasOrLakes() {
 	visited := make([]bool, len(m.miniTiles))
 
@@ -113,12 +99,10 @@ func (m *Map) decideSeasOrLakes() {
 				continue
 			}
 
-			// BFS over connected unwalkable MiniTiles.
 			component := m.bfsFloodFill(wp, visited, func(_ bwapi.WalkPosition, mt *MiniTile) bool {
 				return !mt.Walkable
 			})
 
-			// Compute bounding box.
 			minX, maxX := int32(math.MaxInt32), int32(math.MinInt32)
 			minY, maxY := int32(math.MaxInt32), int32(math.MinInt32)
 			for _, p := range component {
@@ -138,7 +122,6 @@ func (m *Map) decideSeasOrLakes() {
 			w := maxX - minX + 1
 			h := maxY - minY + 1
 
-			// Classify: sea if large or wide, lake otherwise.
 			isSea := len(component) > lakeMaxMiniTiles ||
 				int(w) > lakeMaxWidthMiniTiles ||
 				int(h) > lakeMaxWidthMiniTiles
@@ -155,8 +138,6 @@ func (m *Map) decideSeasOrLakes() {
 		}
 	}
 }
-
-// --- Step 5: Initialize neutral data ---
 
 func (m *Map) initializeNeutralData(game *bwapi.Game) {
 	neutralPlayer := game.Neutral()
@@ -186,7 +167,6 @@ func (m *Map) initializeNeutralData(game *bwapi.Game) {
 		nIdx := len(m.neutrals)
 		m.neutrals = append(m.neutrals, neutral)
 
-		// Mark tile footprint.
 		for dy := 0; dy < th; dy++ {
 			for dx := 0; dx < tw; dx++ {
 				ttp := bwapi.TilePosition{X: tp.X + int32(dx), Y: tp.Y + int32(dy)}
@@ -220,16 +200,12 @@ func (m *Map) initializeNeutralData(game *bwapi.Game) {
 	}
 }
 
-// --- Step 6: Compute altitude ---
-
 func (m *Map) computeAltitude() {
-	// Multi-source Dijkstra from all MiniTiles adjacent to Sea.
 	pq := &priorityQueue{}
 	heap.Init(pq)
 
-	altSet := make([]bool, len(m.miniTiles)) // true if altitude already finalized
+	altSet := make([]bool, len(m.miniTiles))
 
-	// Seed: all walkable MiniTiles that are adjacent to a Sea MiniTile.
 	for y := 0; y < m.walkHeight; y++ {
 		for x := 0; x < m.walkWidth; x++ {
 			wp := bwapi.WalkPosition{X: int32(x), Y: int32(y)}
@@ -241,13 +217,11 @@ func (m *Map) computeAltitude() {
 				continue
 			}
 			if mt.Lake {
-				// Lakes keep altitude > 0 but don't participate in Dijkstra.
 				mt.Alt = 1
 				altSet[idx] = true
 				continue
 			}
 			if !mt.Walkable {
-				// Non-sea, non-lake unwalkable: treat like sea for altitude seeding.
 				mt.Alt = 0
 				altSet[idx] = true
 				continue
@@ -255,7 +229,6 @@ func (m *Map) computeAltitude() {
 		}
 	}
 
-	// Seed from all walkable tiles adjacent to altitude-0 tiles.
 	for y := 0; y < m.walkHeight; y++ {
 		for x := 0; x < m.walkWidth; x++ {
 			wp := bwapi.WalkPosition{X: int32(x), Y: int32(y)}
@@ -263,11 +236,9 @@ func (m *Map) computeAltitude() {
 			if !m.miniTiles[idx].Walkable || altSet[idx] {
 				continue
 			}
-			// Check if adjacent to any altitude-0 tile.
 			for _, n := range m.walkNeighbors8(wp) {
 				ni := m.miniTileIndex(n)
 				if m.miniTiles[ni].Alt == 0 && altSet[ni] {
-					// Distance to neighbor: 8 for cardinal, 11 for diagonal.
 					dx := n.X - wp.X
 					dy := n.Y - wp.Y
 					d := 8
@@ -281,7 +252,6 @@ func (m *Map) computeAltitude() {
 		}
 	}
 
-	// Dijkstra: propagate altitude inward.
 	for pq.Len() > 0 {
 		item := heap.Pop(pq).(pqItem)
 		idx := m.miniTileIndex(item.wp)
@@ -307,8 +277,6 @@ func (m *Map) computeAltitude() {
 	}
 }
 
-// --- Step 7: Process blocking neutrals ---
-
 func (m *Map) processBlockingNeutrals() {
 	for i := range m.neutrals {
 		n := &m.neutrals[i]
@@ -321,16 +289,12 @@ func (m *Map) processBlockingNeutrals() {
 	}
 }
 
-// countDoors counts distinct walkable "doors" around a neutral's tile footprint.
-// A door is a walkable MiniTile on the border that leads to a sufficiently large area.
 func (m *Map) countDoors(n *Neutral) int {
-	// Collect all walkable MiniTiles on the 1-tile border around the neutral.
 	visited := make(map[int]bool)
 	var seeds []bwapi.WalkPosition
 
 	for dy := -1; dy <= n.TileH; dy++ {
 		for dx := -1; dx <= n.TileW; dx++ {
-			// Only border tiles.
 			if dy >= 0 && dy < n.TileH && dx >= 0 && dx < n.TileW {
 				continue
 			}
@@ -338,7 +302,6 @@ func (m *Map) countDoors(n *Neutral) int {
 			if !m.validTile(tp) {
 				continue
 			}
-			// Check all 4x4 sub-MiniTiles.
 			for sy := 0; sy < 4; sy++ {
 				for sx := 0; sx < 4; sx++ {
 					wp := bwapi.WalkPosition{
@@ -362,8 +325,6 @@ func (m *Map) countDoors(n *Neutral) int {
 		return 0
 	}
 
-	// BFS from each unvisited seed to count distinct connected components
-	// that reach a significant number of tiles.
 	doorVisited := make([]bool, len(m.miniTiles))
 	doors := 0
 	for _, seed := range seeds {
@@ -381,14 +342,12 @@ func (m *Map) countDoors(n *Neutral) int {
 	return doors
 }
 
-// --- Step 8: Compute temporary areas ---
-
 type tempArea struct {
 	id          AreaId
 	top         bwapi.WalkPosition
 	topAltitude Altitude
 	count       int
-	mergedInto  AreaId // 0 if not merged
+	mergedInto  AreaId
 }
 
 type frontier struct {
@@ -398,7 +357,6 @@ type frontier struct {
 }
 
 func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
-	// Collect all walkable MiniTiles and sort by altitude descending.
 	type wpAlt struct {
 		wp  bwapi.WalkPosition
 		alt Altitude
@@ -423,7 +381,6 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 	var fronts []frontier
 	nextID := AreaId(1)
 
-	// resolveID follows merge chains to find the current area ID.
 	resolveID := func(id AreaId) AreaId {
 		for {
 			if id <= 0 || int(id) > len(temps) {
@@ -440,7 +397,6 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 	for _, wa := range walkable {
 		idx := m.miniTileIndex(wa.wp)
 
-		// Find neighboring areas.
 		neighborAreas := make(map[AreaId]bool)
 		for _, n := range m.walkNeighbors8(wa.wp) {
 			ni := m.miniTileIndex(n)
@@ -453,7 +409,6 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 
 		switch len(neighborAreas) {
 		case 0:
-			// No assigned neighbors: create a new tempArea.
 			temps = append(temps, tempArea{
 				id:          nextID,
 				top:         wa.wp,
@@ -464,7 +419,6 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 			nextID++
 
 		case 1:
-			// Exactly one neighbor: extend that area.
 			var areaID AreaId
 			for id := range neighborAreas {
 				areaID = id
@@ -473,12 +427,10 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 			m.miniTiles[idx].AreaID = areaID
 
 		default:
-			// Multiple neighbors: pick the two largest, decide merge or frontier.
 			ids := make([]AreaId, 0, len(neighborAreas))
 			for id := range neighborAreas {
 				ids = append(ids, id)
 			}
-			// Sort by size descending.
 			sort.Slice(ids, func(i, j int) bool {
 				return temps[ids[i]-1].count > temps[ids[j]-1].count
 			})
@@ -493,45 +445,38 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 				m.containsStartLocation(st)
 
 			if shouldMerge {
-				// Merge smaller into larger.
 				lt.count += st.count
 				st.mergedInto = larger
 				m.miniTiles[idx].AreaID = larger
 
-				// Re-merge any remaining areas too.
 				for _, id := range ids[2:] {
 					t := &temps[id-1]
 					lt.count += t.count
 					t.mergedInto = larger
 				}
 			} else {
-				// Record frontier between the two largest areas.
 				fronts = append(fronts, frontier{
 					wp:    wa.wp,
 					area1: larger,
 					area2: smaller,
 				})
-				// Assign to the larger area.
 				lt.count++
 				m.miniTiles[idx].AreaID = larger
 			}
 		}
 	}
 
-	// Resolve all merge chains in MiniTiles.
 	for i := range m.miniTiles {
 		if m.miniTiles[i].AreaID > 0 {
 			m.miniTiles[i].AreaID = resolveID(m.miniTiles[i].AreaID)
 		}
 	}
 
-	// Resolve merge chains in frontiers.
 	for i := range fronts {
 		fronts[i].area1 = resolveID(fronts[i].area1)
 		fronts[i].area2 = resolveID(fronts[i].area2)
 	}
 
-	// Filter out frontiers where both sides merged into the same area.
 	var filtered []frontier
 	for _, f := range fronts {
 		if f.area1 != f.area2 {
@@ -542,10 +487,8 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 	return temps, filtered
 }
 
-// containsStartLocation checks if a tempArea contains any start location.
 func (m *Map) containsStartLocation(ta *tempArea) bool {
 	for _, sl := range m.startLocations {
-		// Check center of the start location (CC footprint center).
 		wp := bwapi.WalkPosition{X: sl.X*4 + 2, Y: sl.Y*4 + 2}
 		if m.validWalk(wp) {
 			idx := m.miniTileIndex(wp)
@@ -557,18 +500,14 @@ func (m *Map) containsStartLocation(ta *tempArea) bool {
 	return false
 }
 
-// --- Step 9: Compute final areas ---
-
 func (m *Map) computeAreas(temps []tempArea) {
-	// Filter tempAreas that are large enough.
-	// Build a mapping from old tempArea ID to new Area ID.
 	oldToNew := make(map[AreaId]AreaId)
 	newID := AreaId(1)
 
 	for i := range temps {
 		t := &temps[i]
 		if t.mergedInto != 0 {
-			continue // merged away
+			continue
 		}
 		if t.count >= areaMinMiniTiles {
 			oldToNew[t.id] = newID
@@ -583,7 +522,6 @@ func (m *Map) computeAreas(temps []tempArea) {
 		}
 	}
 
-	// Reassign MiniTile AreaIDs: valid → new ID, undersized → negative.
 	for i := range m.miniTiles {
 		mt := &m.miniTiles[i]
 		if mt.AreaID <= 0 {
@@ -592,11 +530,10 @@ func (m *Map) computeAreas(temps []tempArea) {
 		if newAID, ok := oldToNew[mt.AreaID]; ok {
 			mt.AreaID = newAID
 		} else {
-			mt.AreaID = -mt.AreaID // undersized
+			mt.AreaID = -mt.AreaID
 		}
 	}
 
-	// Compute area statistics from MiniTiles.
 	for y := 0; y < m.walkHeight; y++ {
 		for x := 0; x < m.walkWidth; x++ {
 			mt := &m.miniTiles[y*m.walkWidth+x]
@@ -608,13 +545,11 @@ func (m *Map) computeAreas(temps []tempArea) {
 		}
 	}
 
-	// Compute Tile-level area assignment and statistics.
 	for ty := 0; ty < m.tileHeight; ty++ {
 		for tx := 0; tx < m.tileWidth; tx++ {
 			ti := ty*m.tileWidth + tx
 			t := &m.tiles[ti]
 
-			// Find most common area among 4x4 sub-MiniTiles and min altitude.
 			counts := make(map[AreaId]int)
 			minAlt := Altitude(math.MaxInt16)
 			for dy := 0; dy < 4; dy++ {
@@ -639,7 +574,6 @@ func (m *Map) computeAreas(temps []tempArea) {
 					t.AreaID = aid
 				}
 			} else if len(counts) > 1 {
-				// Mixed: pick the most common, but mark as 0 if truly mixed.
 				bestID := AreaId(0)
 				bestCount := 0
 				for aid, c := range counts {
@@ -651,7 +585,6 @@ func (m *Map) computeAreas(temps []tempArea) {
 				t.AreaID = bestID
 			}
 
-			// Update area bounding box and tile counts.
 			if t.AreaID > 0 {
 				area := &m.areas[t.AreaID-1]
 				area.TileCount++
@@ -680,7 +613,6 @@ func (m *Map) computeAreas(temps []tempArea) {
 		}
 	}
 
-	// Assign minerals and geysers to areas.
 	for i := range m.minerals {
 		n := &m.neutrals[m.minerals[i].NeutralIdx]
 		tp := n.TilePos
@@ -705,15 +637,9 @@ func (m *Map) computeAreas(temps []tempArea) {
 	}
 }
 
-// --- Step 10: Create chokepoints ---
-
 func (m *Map) createChokePoints(fronts []frontier) {
-	// Update frontier area IDs to use the new (post-step-9) IDs.
-	// The MiniTiles already have new IDs, so re-read from them.
 	for i := range fronts {
 		idx := m.miniTileIndex(fronts[i].wp)
-		// The frontier WalkPosition was assigned to the larger area in step 8.
-		// We need the two areas on either side. Look at neighbors.
 		neighborAreas := make(map[AreaId]bool)
 		for _, n := range m.walkNeighbors8(fronts[i].wp) {
 			ni := m.miniTileIndex(n)
@@ -722,7 +648,6 @@ func (m *Map) createChokePoints(fronts []frontier) {
 				neighborAreas[aid] = true
 			}
 		}
-		// Also include the frontier tile's own area.
 		own := m.miniTiles[idx].AreaID
 		if own > 0 {
 			neighborAreas[own] = true
@@ -739,7 +664,6 @@ func (m *Map) createChokePoints(fronts []frontier) {
 		}
 	}
 
-	// Group frontiers by area pair.
 	type areaPair struct{ a, b AreaId }
 	groups := make(map[areaPair][]bwapi.WalkPosition)
 	for _, f := range fronts {
@@ -753,7 +677,6 @@ func (m *Map) createChokePoints(fronts []frontier) {
 		groups[areaPair{a, b}] = append(groups[areaPair{a, b}], f.wp)
 	}
 
-	// For each group, cluster frontier positions and create ChokePoints.
 	for pair, positions := range groups {
 		clusters := clusterPositions(positions, chokeClusterDistSq)
 
@@ -762,7 +685,6 @@ func (m *Map) createChokePoints(fronts []frontier) {
 			cp.Index = len(m.chokePoints)
 			m.chokePoints = append(m.chokePoints, cp)
 
-			// Register with areas.
 			if a := m.Area(pair.a); a != nil {
 				a.ChokePointIdxs = append(a.ChokePointIdxs, cp.Index)
 			}
@@ -772,14 +694,12 @@ func (m *Map) createChokePoints(fronts []frontier) {
 		}
 	}
 
-	// Create pseudo-chokepoints for blocking neutrals.
 	for i := range m.neutrals {
 		n := &m.neutrals[i]
 		if !n.Blocking {
 			continue
 		}
 
-		// Find two areas on either side of the neutral.
 		areasAround := m.areasAroundNeutral(n)
 		if len(areasAround) < 2 {
 			continue
@@ -791,7 +711,6 @@ func (m *Map) createChokePoints(fronts []frontier) {
 		}
 		sort.Slice(ids, func(a, b int) bool { return ids[a] < ids[b] })
 
-		// Create pseudo-CP between the two largest surrounding areas.
 		centerWP := n.Pos.ToWalkPosition()
 		cp := ChokePoint{
 			Index:      len(m.chokePoints),
@@ -814,9 +733,7 @@ func (m *Map) createChokePoints(fronts []frontier) {
 	}
 }
 
-// makeChokePoint creates a ChokePoint from a cluster of frontier positions.
 func (m *Map) makeChokePoint(a, b AreaId, cluster []bwapi.WalkPosition) ChokePoint {
-	// Middle = highest altitude point.
 	middle := cluster[0]
 	middleAlt := m.miniTiles[m.miniTileIndex(middle)].Alt
 	for _, wp := range cluster[1:] {
@@ -827,7 +744,6 @@ func (m *Map) makeChokePoint(a, b AreaId, cluster []bwapi.WalkPosition) ChokePoi
 		}
 	}
 
-	// End1, End2 = the two points farthest from Middle.
 	end1, end2 := cluster[0], cluster[0]
 	maxDist1, maxDist2 := 0, 0
 	for _, wp := range cluster {
@@ -853,15 +769,12 @@ func (m *Map) makeChokePoint(a, b AreaId, cluster []bwapi.WalkPosition) ChokePoi
 	}
 }
 
-// clusterPositions groups WalkPositions into clusters where each position
-// is within distSq of at least one other position in the cluster.
 func clusterPositions(positions []bwapi.WalkPosition, distSq int) [][]bwapi.WalkPosition {
 	n := len(positions)
 	if n == 0 {
 		return nil
 	}
 
-	// Union-Find.
 	parent := make([]int, n)
 	for i := range parent {
 		parent[i] = i
@@ -901,13 +814,12 @@ func clusterPositions(positions []bwapi.WalkPosition, distSq int) [][]bwapi.Walk
 	return result
 }
 
-// areasAroundNeutral finds the distinct areas bordering a neutral's tile footprint.
 func (m *Map) areasAroundNeutral(n *Neutral) map[AreaId]bool {
 	areas := make(map[AreaId]bool)
 	for dy := -1; dy <= n.TileH; dy++ {
 		for dx := -1; dx <= n.TileW; dx++ {
 			if dy >= 0 && dy < n.TileH && dx >= 0 && dx < n.TileW {
-				continue // inside, not border
+				continue
 			}
 			tp := bwapi.TilePosition{X: n.TilePos.X + int32(dx), Y: n.TilePos.Y + int32(dy)}
 			if !m.validTile(tp) {
@@ -922,15 +834,12 @@ func (m *Map) areasAroundNeutral(n *Neutral) map[AreaId]bool {
 	return areas
 }
 
-// --- Step 13: Create bases ---
-
 func (m *Map) createBases() {
 	for areaIdx := range m.areas {
 		area := &m.areas[areaIdx]
 		m.createBasesForArea(area)
 	}
 
-	// Match start locations to nearest bases.
 	for _, sl := range m.startLocations {
 		bestDist := math.MaxFloat64
 		bestIdx := -1
@@ -954,7 +863,6 @@ func (m *Map) createBases() {
 }
 
 func (m *Map) createBasesForArea(area *Area) {
-	// Collect unassigned minerals and geysers in this area.
 	availMinerals := make([]int, 0)
 	for _, mi := range area.MineralIdxs {
 		if m.minerals[mi].BaseIdx < 0 {
@@ -969,7 +877,6 @@ func (m *Map) createBasesForArea(area *Area) {
 	}
 
 	for len(availMinerals) > 0 || len(availGeysers) > 0 {
-		// Compute resource centroid.
 		cx, cy := 0.0, 0.0
 		count := 0
 		for _, mi := range availMinerals {
@@ -990,7 +897,6 @@ func (m *Map) createBasesForArea(area *Area) {
 		cx /= float64(count)
 		cy /= float64(count)
 
-		// Search for best CC placement.
 		bestScore := 0.0
 		bestTP := bwapi.TilePosition{X: -1, Y: -1}
 		searchRadius := maxTilesBetweenCCAndRes + ccTileWidth
@@ -1010,7 +916,6 @@ func (m *Map) createBasesForArea(area *Area) {
 					continue
 				}
 
-				// Score: sum of 1/distance to nearby resources.
 				score := 0.0
 				ccCenter := bwapi.Position{
 					X: tp.X*32 + ccTileWidth*16,
@@ -1028,7 +933,7 @@ func (m *Map) createBasesForArea(area *Area) {
 					n := &m.neutrals[m.geysers[gi].NeutralIdx]
 					d := pixelDist(ccCenter, n.Pos)
 					if d > 0 && d < float64(maxTilesBetweenCCAndRes*32) {
-						score += 3.0 / d // geysers weighted 3x
+						score += 3.0 / d
 					}
 				}
 
@@ -1040,10 +945,9 @@ func (m *Map) createBasesForArea(area *Area) {
 		}
 
 		if bestTP.X < 0 {
-			break // no valid placement found
+			break
 		}
 
-		// Create base.
 		base := Base{
 			Index:    len(m.bases),
 			Location: bestTP,
@@ -1054,7 +958,6 @@ func (m *Map) createBasesForArea(area *Area) {
 			AreaID: area.ID,
 		}
 
-		// Assign nearby resources to this base.
 		var remainMinerals []int
 		for _, mi := range availMinerals {
 			n := &m.neutrals[m.minerals[mi].NeutralIdx]
@@ -1081,7 +984,6 @@ func (m *Map) createBasesForArea(area *Area) {
 		}
 		availGeysers = remainGeysers
 
-		// Only add base if it has resources.
 		if len(base.MineralIdxs) > 0 || len(base.GeyserIdxs) > 0 {
 			area.BaseIdxs = append(area.BaseIdxs, base.Index)
 			m.bases = append(m.bases, base)
@@ -1091,7 +993,6 @@ func (m *Map) createBasesForArea(area *Area) {
 	}
 }
 
-// canPlaceCC checks if a CC can be placed at a TilePosition within the given area.
 func (m *Map) canPlaceCC(tp bwapi.TilePosition, areaID AreaId) bool {
 	for dy := 0; dy < ccTileHeight; dy++ {
 		for dx := 0; dx < ccTileWidth; dx++ {
@@ -1104,7 +1005,7 @@ func (m *Map) canPlaceCC(tp bwapi.TilePosition, areaID AreaId) bool {
 				return false
 			}
 			if t.NeutralIdx >= 0 {
-				return false // occupied by a neutral
+				return false
 			}
 		}
 	}
