@@ -80,6 +80,23 @@ Enum types:
   └── WeaponType          — Weapon stats
 ```
 
+## Commit Messages
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+```
+
+Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `ci`, `perf`
+
+Examples:
+- `fix(client): reset commands before event dispatch`
+- `feat(game): add region pathfinding accessors`
+- `refactor(shm): simplify GameData struct layout`
+
 ## Conventions
 
 - Module import path: `github.com/bradewing/gobwapi`
