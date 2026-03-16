@@ -133,6 +133,11 @@ func (u *Unit) IsVisibleTo(playerIndex int) bool {
 	return u.data.IsVisibleTo(playerIndex)
 }
 
+func (u *Unit) IsVisible() bool {
+	selfIdx := int(u.game.data.SelfIndex())
+	return u.data.IsVisibleTo(selfIdx)
+}
+
 // --- Related Units ---
 
 func (u *Unit) GetAddon() *Unit {
