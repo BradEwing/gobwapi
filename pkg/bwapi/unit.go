@@ -261,6 +261,40 @@ func (u *Unit) IsTargetable() bool {
 		t != UnitTypeSpellDisruptionWeb
 }
 
+// IsBeingHealed returns whether this unit is being healed by a Medic.
+func (u *Unit) IsBeingHealed() bool {
+	allUnits := u.game.GetAllUnits()
+	for _, unit := range allUnits {
+		if unit.GetType() == UnitTypeTerranMedic &&
+			unit.GetOrder() == OrderMedicHeal &&
+			unit.GetTarget() != nil &&
+			unit.GetTarget().Index() == u.index {
+			return true
+		}
+	}
+	return false
+}
+
+// IsInWeaponRange returns whether the target is within this unit's weapon range.
+func (u *Unit) IsInWeaponRange(target *Unit) bool {
+	if target == nil {
+		return false
+	}
+	var weapon WeaponType
+	if target.IsFlying() {
+		weapon = u.GetType().AirWeapon()
+	} else {
+		weapon = u.GetType().GroundWeapon()
+	}
+	if weapon == WeaponTypeNone {
+		return false
+	}
+	maxRange := weapon.MaxRange()
+	minRange := weapon.MinRange()
+	dist := u.GetDistanceToUnit(target)
+	return dist <= maxRange && (minRange == 0 || dist >= minRange)
+}
+
 func (u *Unit) IsVisibleTo(playerIndex int) bool {
 	return u.data.IsVisibleTo(playerIndex)
 }

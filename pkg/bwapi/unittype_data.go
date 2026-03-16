@@ -11,6 +11,18 @@ type unitTypeData struct {
 	groundWeapon, airWeapon                                   WeaponType
 	seekRange, sightRange                                     int
 	maxHitPoints, maxShields, maxEnergy, armor                int
+	whatBuildsType                                            UnitType
+	whatBuildsCount                                           int
+	requiredUnits                                             [4]struct{ unitType UnitType; count int }
+	requiredUnitCount                                         int
+	requiredTech                                              TechType
+	race                                                      Race
+	mineralPrice, gasPrice, buildTime                         int
+	supplyRequired, supplyProvided                            int
+	isTwoUnitsInOneEgg, isAddon                              bool
+	requiresCreep, requiresPsi                                bool
+	armorUpgrade                                              UpgradeType
+	size                                                      UnitSizeType
 }
 
 // unitTypeTable is a lookup table of static unit type data, indexed by UnitType ID.
@@ -19,6 +31,11 @@ var unitTypeTable [234]unitTypeData
 
 func init() {
 	for i, d := range fullUnitTypeTable {
+		var reqUnits [4]struct{ unitType UnitType; count int }
+		for j := 0; j < 4; j++ {
+			reqUnits[j].unitType = UnitType(d.requiredUnits[j].unitType)
+			reqUnits[j].count = int(d.requiredUnits[j].count)
+		}
 		unitTypeTable[i] = unitTypeData{
 			dimensionLeft:       int(d.dimensionLeft),
 			dimensionRight:      int(d.dimensionRight),
@@ -43,6 +60,23 @@ func init() {
 			maxShields:          int(d.maxShields),
 			maxEnergy:           int(d.maxEnergy),
 			armor:               int(d.armor),
+			whatBuildsType:      UnitType(d.whatBuildsType),
+			whatBuildsCount:     int(d.whatBuildsCount),
+			requiredUnits:       reqUnits,
+			requiredUnitCount:   int(d.requiredUnitCount),
+			requiredTech:        TechType(d.requiredTech),
+			race:                Race(d.race),
+			mineralPrice:        int(d.mineralPrice),
+			gasPrice:            int(d.gasPrice),
+			buildTime:           int(d.buildTime),
+			supplyRequired:      int(d.supplyRequired),
+			supplyProvided:      int(d.supplyProvided),
+			isTwoUnitsInOneEgg:  d.isTwoUnitsInOneEgg,
+			isAddon:             d.isAddon,
+			requiresCreep:       d.requiresCreep,
+			requiresPsi:         d.requiresPsi,
+			armorUpgrade:        UpgradeType(d.armorUpgrade),
+			size:                UnitSizeType(d.size),
 		}
 	}
 	// isRefinery is not tracked in the generated table; set manually.
@@ -245,4 +279,134 @@ func (ut UnitType) Armor() int {
 		return 0
 	}
 	return unitTypeTable[ut].armor
+}
+
+// WhatBuilds returns the UnitType that produces this unit and the count required.
+// Count is usually 1, but 2 for Archon merges. Returns (UnitTypeNone, 0) if not buildable.
+func (ut UnitType) WhatBuilds() (UnitType, int) {
+	if !utInRange(ut) {
+		return UnitTypeNone, 0
+	}
+	return unitTypeTable[ut].whatBuildsType, unitTypeTable[ut].whatBuildsCount
+}
+
+// RequiredUnits returns a map of prerequisite UnitTypes and their required counts.
+func (ut UnitType) RequiredUnits() map[UnitType]int {
+	m := make(map[UnitType]int)
+	if !utInRange(ut) {
+		return m
+	}
+	d := &unitTypeTable[ut]
+	for i := 0; i < d.requiredUnitCount; i++ {
+		ru := d.requiredUnits[i]
+		if ru.unitType != UnitTypeNone {
+			m[ru.unitType] = ru.count
+		}
+	}
+	return m
+}
+
+// RequiredTech returns the TechType required to build this unit.
+// Returns TechTypeNone for most units.
+func (ut UnitType) RequiredTech() TechType {
+	if !utInRange(ut) {
+		return TechTypeNone
+	}
+	return unitTypeTable[ut].requiredTech
+}
+
+// GetRace returns the Race of this unit type.
+func (ut UnitType) GetRace() Race {
+	if !utInRange(ut) {
+		return RaceNone
+	}
+	return unitTypeTable[ut].race
+}
+
+// MineralPrice returns the mineral cost to produce this unit.
+func (ut UnitType) MineralPrice() int {
+	if !utInRange(ut) {
+		return 0
+	}
+	return unitTypeTable[ut].mineralPrice
+}
+
+// GasPrice returns the vespene gas cost to produce this unit.
+func (ut UnitType) GasPrice() int {
+	if !utInRange(ut) {
+		return 0
+	}
+	return unitTypeTable[ut].gasPrice
+}
+
+// BuildTime returns the time in frames to produce this unit.
+func (ut UnitType) BuildTime() int {
+	if !utInRange(ut) {
+		return 0
+	}
+	return unitTypeTable[ut].buildTime
+}
+
+// SupplyRequired returns the supply cost in BWAPI doubled format (2 = 1 supply).
+func (ut UnitType) SupplyRequired() int {
+	if !utInRange(ut) {
+		return 0
+	}
+	return unitTypeTable[ut].supplyRequired
+}
+
+// SupplyProvided returns the supply provided in BWAPI doubled format (16 = 8 supply).
+func (ut UnitType) SupplyProvided() int {
+	if !utInRange(ut) {
+		return 0
+	}
+	return unitTypeTable[ut].supplyProvided
+}
+
+// IsTwoUnitsInOneEgg returns whether this unit type produces two units per egg (e.g., Zerglings, Scourge).
+func (ut UnitType) IsTwoUnitsInOneEgg() bool {
+	if !utInRange(ut) {
+		return false
+	}
+	return unitTypeTable[ut].isTwoUnitsInOneEgg
+}
+
+// IsAddon returns whether this unit type is a building addon (e.g., Comsat Station, Machine Shop).
+func (ut UnitType) IsAddon() bool {
+	if !utInRange(ut) {
+		return false
+	}
+	return unitTypeTable[ut].isAddon
+}
+
+// RequiresCreep returns whether this building must be placed on creep.
+func (ut UnitType) RequiresCreep() bool {
+	if !utInRange(ut) {
+		return false
+	}
+	return unitTypeTable[ut].requiresCreep
+}
+
+// RequiresPsi returns whether this building requires pylon power.
+func (ut UnitType) RequiresPsi() bool {
+	if !utInRange(ut) {
+		return false
+	}
+	return unitTypeTable[ut].requiresPsi
+}
+
+// ArmorUpgrade returns the UpgradeType that improves this unit's armor.
+func (ut UnitType) ArmorUpgrade() UpgradeType {
+	if !utInRange(ut) {
+		return UpgradeTypeNone
+	}
+	return unitTypeTable[ut].armorUpgrade
+}
+
+// Size returns the UnitSizeType of this unit (Small, Medium, Large, etc.).
+func (ut UnitType) Size() UnitSizeType {
+	if !utInRange(ut) {
+		return UnitSizeTypeNone
+	}
+	return unitTypeTable[ut].size
 }

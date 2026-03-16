@@ -743,3 +743,235 @@ func (g *Game) HasPath(source, dest Position) bool {
 	}
 	return r1.IslandID() == r2.IslandID()
 }
+
+// --- Build / Production Queries ---
+
+// CanBuildHere checks whether a building of the given type can be placed at
+// the given tile position. If builder is non-nil, its position is excluded
+// from the occupation check. If checkExplored is true, all tiles must be explored.
+func (g *Game) CanBuildHere(pos TilePosition, unitType UnitType, builder *Unit, checkExplored bool) bool {
+	tw := unitType.TileWidth()
+	th := unitType.TileHeight()
+	if tw == 0 || th == 0 {
+		return false
+	}
+
+	tx := int(pos.X)
+	ty := int(pos.Y)
+	mapW := int(g.data.MapWidth())
+	mapH := int(g.data.MapHeight())
+
+	// Check map bounds
+	if tx < 0 || ty < 0 || tx+tw > mapW || ty+th > mapH {
+		return false
+	}
+
+	// Special case: refineries must be placed on a geyser
+	if unitType.IsRefinery() {
+		geyserFound := false
+		geysers := g.GetStaticGeysers()
+		for _, geyser := range geysers {
+			gtp := geyser.GetInitialTilePosition()
+			if int(gtp.X) == tx && int(gtp.Y) == ty {
+				geyserFound = true
+				break
+			}
+		}
+		if !geyserFound {
+			return false
+		}
+		return true
+	}
+
+	// Check each tile in the building footprint
+	for x := tx; x < tx+tw; x++ {
+		for y := ty; y < ty+th; y++ {
+			if !g.IsBuildable(x, y) {
+				return false
+			}
+			if checkExplored && !g.IsExplored(x, y) {
+				return false
+			}
+			// Check occupation (skip builder's tile)
+			if g.IsOccupied(x, y) {
+				if builder != nil {
+					btp := builder.GetTilePosition()
+					btw := builder.GetType().TileWidth()
+					bth := builder.GetType().TileHeight()
+					bx := int(btp.X)
+					by := int(btp.Y)
+					if x >= bx && x < bx+btw && y >= by && y < by+bth {
+						continue
+					}
+				}
+				return false
+			}
+		}
+	}
+
+	// Creep requirement
+	if unitType.RequiresCreep() {
+		for x := tx; x < tx+tw; x++ {
+			for y := ty; y < ty+th; y++ {
+				if !g.HasCreep(x, y) {
+					return false
+				}
+			}
+		}
+	}
+
+	// Psi power requirement
+	if unitType.RequiresPsi() {
+		if !g.HasPowerForType(tx, ty, unitType) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// CanMake checks whether the self player can produce a unit of the given type.
+// If builder is non-nil, checks that the builder is of the correct type.
+func (g *Game) CanMake(unitType UnitType, builder *Unit) bool {
+	self := g.Self()
+	if self == nil {
+		return false
+	}
+
+	// Check unit availability
+	if !self.IsUnitAvailable(unitType) {
+		return false
+	}
+
+	// Check builder type
+	builderType, builderCount := unitType.WhatBuilds()
+	if builder != nil {
+		if builder.GetType() != builderType {
+			return false
+		}
+		_ = builderCount // count check not needed for most units
+	}
+
+	// Check resources
+	if self.Minerals() < unitType.MineralPrice() {
+		return false
+	}
+	if self.Gas() < unitType.GasPrice() {
+		return false
+	}
+
+	// Check supply (supplyRequired is in BWAPI doubled format: 2 = 1 supply)
+	supplyReq := unitType.SupplyRequired()
+	if unitType.IsTwoUnitsInOneEgg() {
+		supplyReq *= 2
+	}
+	if supplyReq > 0 {
+		race := unitType.GetRace()
+		if self.SupplyUsedForRace(race)+supplyReq > self.SupplyTotalForRace(race) {
+			return false
+		}
+	}
+
+	// Check required units exist (completed count > 0)
+	requiredUnits := unitType.RequiredUnits()
+	for reqType, reqCount := range requiredUnits {
+		if self.CompletedUnitCount(reqType) < reqCount {
+			return false
+		}
+	}
+
+	// Check required tech
+	reqTech := unitType.RequiredTech()
+	if reqTech != TechTypeNone && !self.HasResearched(reqTech) {
+		return false
+	}
+
+	return true
+}
+
+// CanResearch checks whether the self player can research the given technology.
+// If unit is non-nil, checks that the unit is of the correct building type.
+func (g *Game) CanResearch(tech TechType, unit *Unit) bool {
+	self := g.Self()
+	if self == nil {
+		return false
+	}
+
+	// Check availability
+	if !self.IsResearchAvailable(tech) {
+		return false
+	}
+
+	// Already researched
+	if self.HasResearched(tech) {
+		return false
+	}
+
+	// Currently researching
+	if self.IsResearching(tech) {
+		return false
+	}
+
+	// Check unit type
+	if unit != nil {
+		if unit.GetType() != tech.WhatResearches() {
+			return false
+		}
+	}
+
+	// Check resources
+	if self.Minerals() < tech.MineralPrice() {
+		return false
+	}
+	if self.Gas() < tech.GasPrice() {
+		return false
+	}
+
+	return true
+}
+
+// CanUpgrade checks whether the self player can perform the given upgrade.
+// If unit is non-nil, checks that the unit is of the correct building type.
+func (g *Game) CanUpgrade(upgrade UpgradeType, unit *Unit) bool {
+	self := g.Self()
+	if self == nil {
+		return false
+	}
+
+	// Check current level
+	currentLevel := self.UpgradeLevel(upgrade)
+	if currentLevel >= upgrade.MaxRepeats() {
+		return false
+	}
+
+	// Check already upgrading
+	if self.IsUpgrading(upgrade) {
+		return false
+	}
+
+	// Check unit type
+	if unit != nil {
+		if unit.GetType() != upgrade.WhatUpgrades() {
+			return false
+		}
+	}
+
+	// Check resources for next level
+	nextLevel := currentLevel + 1
+	if self.Minerals() < upgrade.MineralPrice(nextLevel) {
+		return false
+	}
+	if self.Gas() < upgrade.GasPrice(nextLevel) {
+		return false
+	}
+
+	// Check required building for this level
+	reqBuilding := upgrade.WhatsRequired(nextLevel)
+	if reqBuilding != UnitTypeNone {
+		if self.CompletedUnitCount(reqBuilding) < 1 {
+			return false
+		}
+	}
+
+	return true
+}
