@@ -1,6 +1,8 @@
 package bwapi
 
 import (
+	"math"
+
 	"github.com/bradewing/gobwapi/internal/shm"
 )
 
@@ -60,9 +62,19 @@ func (u *Unit) AirWeaponCooldown() int    { return int(u.data.AirWeaponCooldown(
 func (u *Unit) SpellCooldown() int        { return int(u.data.SpellCooldown()) }
 func (u *Unit) DefenseMatrixPoints() int  { return int(u.data.DefenseMatrixPoints()) }
 func (u *Unit) DefenseMatrixTimer() int   { return int(u.data.DefenseMatrixTimer()) }
-func (u *Unit) StimTimer() int            { return int(u.data.StimTimer()) }
-func (u *Unit) RemainingBuildTime() int   { return int(u.data.RemainingBuildTime()) }
-func (u *Unit) RemainingTrainTime() int   { return int(u.data.RemainingTrainTime()) }
+func (u *Unit) StimTimer() int              { return int(u.data.StimTimer()) }
+func (u *Unit) EnsnareTimer() int           { return int(u.data.EnsnareTimer()) }
+func (u *Unit) IrradiateTimer() int         { return int(u.data.IrradiateTimer()) }
+func (u *Unit) LockdownTimer() int          { return int(u.data.LockdownTimer()) }
+func (u *Unit) MaelstromTimer() int         { return int(u.data.MaelstromTimer()) }
+func (u *Unit) OrderTimer() int             { return int(u.data.OrderTimer()) }
+func (u *Unit) PlagueTimer() int            { return int(u.data.PlagueTimer()) }
+func (u *Unit) RemoveTimer() int            { return int(u.data.RemoveTimer()) }
+func (u *Unit) StasisTimer() int            { return int(u.data.StasisTimer()) }
+func (u *Unit) RemainingBuildTime() int     { return int(u.data.RemainingBuildTime()) }
+func (u *Unit) RemainingTrainTime() int     { return int(u.data.RemainingTrainTime()) }
+func (u *Unit) RemainingResearchTime() int  { return int(u.data.RemainingResearchTime()) }
+func (u *Unit) RemainingUpgradeTime() int   { return int(u.data.RemainingUpgradeTime()) }
 
 // --- Orders ---
 
@@ -127,7 +139,127 @@ func (u *Unit) IsInvincible() bool     { return u.data.IsInvincible() }
 func (u *Unit) IsHallucination() bool  { return u.data.IsHallucination() }
 func (u *Unit) HasNuke() bool          { return u.data.HasNuke() }
 func (u *Unit) IsUnderStorm() bool     { return u.data.IsUnderStorm() }
-func (u *Unit) IsUnderDarkSwarm() bool { return u.data.IsUnderDarkSwarm() }
+func (u *Unit) IsUnderDarkSwarm() bool      { return u.data.IsUnderDarkSwarm() }
+func (u *Unit) IsUnderDisruptionWeb() bool  { return u.data.IsUnderDWeb() }
+func (u *Unit) IsAccelerating() bool        { return u.data.IsAccelerating() }
+func (u *Unit) IsAttackFrame() bool         { return u.data.IsAttackFrame() }
+func (u *Unit) IsBeingGathered() bool       { return u.data.IsBeingGathered() }
+func (u *Unit) IsBlind() bool               { return u.data.IsBlind() }
+func (u *Unit) IsBraking() bool             { return u.data.IsBraking() }
+func (u *Unit) IsInterruptible() bool       { return u.data.IsInterruptible() }
+func (u *Unit) IsParasited() bool           { return u.data.IsParasited() }
+func (u *Unit) IsStartingAttack() bool      { return u.data.IsStartingAttack() }
+func (u *Unit) IsStuck() bool               { return u.data.IsStuck() }
+func (u *Unit) RecentlyAttacked() bool      { return u.data.RecentlyAttacked() }
+
+// --- Derived Status Flags ---
+
+// IsDefenseMatrixed returns whether this unit is under a Defense Matrix.
+func (u *Unit) IsDefenseMatrixed() bool { return u.data.DefenseMatrixTimer() > 0 }
+
+// IsEnsnared returns whether this unit is under Ensnare.
+func (u *Unit) IsEnsnared() bool { return u.data.EnsnareTimer() > 0 }
+
+// IsIrradiated returns whether this unit is under Irradiate.
+func (u *Unit) IsIrradiated() bool { return u.data.IrradiateTimer() > 0 }
+
+// IsLockedDown returns whether this unit is under Lockdown.
+func (u *Unit) IsLockedDown() bool { return u.data.LockdownTimer() > 0 }
+
+// IsMaelstrommed returns whether this unit is under Maelstrom.
+func (u *Unit) IsMaelstrommed() bool { return u.data.MaelstromTimer() > 0 }
+
+// IsPlagued returns whether this unit is under Plague.
+func (u *Unit) IsPlagued() bool { return u.data.PlagueTimer() > 0 }
+
+// IsStasised returns whether this unit is under Stasis Field.
+func (u *Unit) IsStasised() bool { return u.data.StasisTimer() > 0 }
+
+// IsStimmed returns whether this unit is under Stim Pack.
+func (u *Unit) IsStimmed() bool { return u.data.StimTimer() > 0 }
+
+// IsUnderAttack returns whether this unit was recently attacked.
+func (u *Unit) IsUnderAttack() bool { return u.data.RecentlyAttacked() }
+
+// IsCarryingGas returns whether this worker is carrying gas.
+func (u *Unit) IsCarryingGas() bool { return u.data.CarryResourceType() == 1 }
+
+// IsCarryingMinerals returns whether this worker is carrying minerals.
+func (u *Unit) IsCarryingMinerals() bool { return u.data.CarryResourceType() == 2 }
+
+// IsLoaded returns whether this unit is loaded inside a transport.
+func (u *Unit) IsLoaded() bool {
+	return u.data.TransportIndex() >= 0 && u.data.TransportIndex() < int32(shm.MaxUnits)
+}
+
+// IsSieged returns whether this unit is in siege mode.
+func (u *Unit) IsSieged() bool {
+	t := u.GetType()
+	return t == UnitTypeTerranSiegeTankSiegeMode || t == UnitTypeHeroEdmundDukeSiegeMode
+}
+
+// IsFollowing returns whether this unit is executing a Follow order.
+func (u *Unit) IsFollowing() bool { return u.GetOrder() == OrderFollow }
+
+// IsHoldingPosition returns whether this unit is executing a Hold Position order.
+func (u *Unit) IsHoldingPosition() bool {
+	o := u.GetOrder()
+	return o == OrderHoldPosition || o == OrderQueenHoldPosition ||
+		o == OrderSuicideHoldPosition || o == OrderMedicHoldPosition ||
+		o == OrderCarrierHoldPosition || o == OrderReaverHoldPosition
+}
+
+// IsPatrolling returns whether this unit is executing a Patrol order.
+func (u *Unit) IsPatrolling() bool { return u.GetOrder() == OrderPatrol }
+
+// IsRepairing returns whether this unit is repairing.
+func (u *Unit) IsRepairing() bool {
+	o := u.GetOrder()
+	return o == OrderRepair || o == OrderMoveToRepair
+}
+
+// IsResearching returns whether this building is researching a technology.
+func (u *Unit) IsResearching() bool { return u.GetOrder() == OrderResearchTech }
+
+// IsUpgrading returns whether this building is performing an upgrade.
+func (u *Unit) IsUpgrading() bool { return u.GetOrder() == OrderUpgrade }
+
+// IsGatheringGas returns whether this worker is gathering gas.
+func (u *Unit) IsGatheringGas() bool {
+	o := u.GetOrder()
+	return o == OrderMoveToGas || o == OrderWaitForGas ||
+		o == OrderHarvestGas || o == OrderReturnGas
+}
+
+// IsGatheringMinerals returns whether this worker is gathering minerals.
+func (u *Unit) IsGatheringMinerals() bool {
+	o := u.GetOrder()
+	return o == OrderMoveToMinerals || o == OrderWaitForMinerals ||
+		o == OrderMiningMinerals || o == OrderReturnMinerals
+}
+
+// IsBeingConstructed returns whether this unit/building is being constructed.
+func (u *Unit) IsBeingConstructed() bool {
+	if u.data.IsCompleted() {
+		return false
+	}
+	return u.data.IsMorphing() || u.GetType().IsBuilding()
+}
+
+// IsFlying returns whether this unit is airborne.
+func (u *Unit) IsFlying() bool {
+	return u.GetType().IsFlyer() || u.data.IsLifted()
+}
+
+// IsTargetable returns whether this unit can be targeted by commands.
+func (u *Unit) IsTargetable() bool {
+	if !u.data.Exists() || u.IsStasised() {
+		return false
+	}
+	t := u.GetType()
+	return t != UnitTypeSpellScannerSweep && t != UnitTypeSpellDarkSwarm &&
+		t != UnitTypeSpellDisruptionWeb
+}
 
 func (u *Unit) IsVisibleTo(playerIndex int) bool {
 	return u.data.IsVisibleTo(playerIndex)
@@ -170,6 +302,259 @@ func (u *Unit) GetHatchery() *Unit {
 		return nil
 	}
 	return u.game.GetUnit(idx)
+}
+
+// GetRallyUnit returns the unit this building rallies to.
+func (u *Unit) GetRallyUnit() *Unit {
+	idx := int(u.data.RallyUnitIndex())
+	if idx < 0 || idx >= shm.MaxUnits {
+		return nil
+	}
+	return u.game.GetUnit(idx)
+}
+
+// GetNydusExit returns the paired Nydus Canal exit unit.
+func (u *Unit) GetNydusExit() *Unit {
+	idx := int(u.data.NydusExitIndex())
+	if idx < 0 || idx >= shm.MaxUnits {
+		return nil
+	}
+	return u.game.GetUnit(idx)
+}
+
+// GetPowerUp returns the powerup this unit is carrying.
+func (u *Unit) GetPowerUp() *Unit {
+	idx := int(u.data.PowerUpIndex())
+	if idx < 0 || idx >= shm.MaxUnits {
+		return nil
+	}
+	return u.game.GetUnit(idx)
+}
+
+// GetBuildUnit returns the unit this worker/building is currently constructing.
+func (u *Unit) GetBuildUnit() *Unit {
+	idx := int(u.data.BuildUnitIndex())
+	if idx < 0 || idx >= shm.MaxUnits {
+		return nil
+	}
+	return u.game.GetUnit(idx)
+}
+
+// --- Data Reads ---
+
+// GetTech returns the TechType currently being researched by this building.
+func (u *Unit) GetTech() TechType { return TechType(u.data.TechID()) }
+
+// GetUpgrade returns the UpgradeType currently being upgraded by this building.
+func (u *Unit) GetUpgrade() UpgradeType { return UpgradeType(u.data.UpgradeID()) }
+
+// ResourceGroup returns the resource group ID for mineral/gas grouping.
+func (u *Unit) ResourceGroup() int { return int(u.data.ResourceGroup()) }
+
+// AcidSporeCount returns the number of acid spores on this unit.
+func (u *Unit) AcidSporeCount() int { return int(u.data.AcidSporeCount()) }
+
+// GetLastAttackingPlayer returns the player whose unit last attacked this unit.
+func (u *Unit) GetLastAttackingPlayer() *Player {
+	idx := int(u.data.LastAttackerPlayer())
+	if idx < 0 || idx >= shm.MaxPlayers {
+		return nil
+	}
+	return &Player{data: u.game.data.Player(idx), game: u.game, index: idx}
+}
+
+// ReplayID returns this unit's replay ID (only valid in replays).
+func (u *Unit) ReplayID() int { return int(u.data.ReplayID()) }
+
+// GetSpaceRemaining returns the remaining transport space.
+func (u *Unit) GetSpaceRemaining() int {
+	total := u.GetType().SpaceProvided()
+	if total == 0 {
+		return 0
+	}
+	loaded := u.GetLoadedUnits()
+	used := 0
+	for _, lu := range loaded {
+		used += lu.GetType().SpaceRequired()
+	}
+	return total - used
+}
+
+// GetRegion returns the map region this unit is in.
+func (u *Unit) GetRegion() *Region {
+	return u.game.GetRegionAt(int(u.data.PositionX()), int(u.data.PositionY()))
+}
+
+// GetUnitsInRadius returns all visible units within the given pixel radius.
+func (u *Unit) GetUnitsInRadius(radius int, filter func(*Unit) bool) []*Unit {
+	return u.game.getUnitsInRadiusFiltered(int(u.data.PositionX()), int(u.data.PositionY()), radius, filter)
+}
+
+// --- Initial State ---
+// These methods return the unit's state at game start. Requires Game.SnapshotInitialState().
+
+// GetInitialType returns this unit's type at game start.
+func (u *Unit) GetInitialType() UnitType {
+	if s, ok := u.game.initialStates[u.index]; ok {
+		return s.unitType
+	}
+	return UnitTypeUnknown
+}
+
+// GetInitialPosition returns this unit's position at game start.
+func (u *Unit) GetInitialPosition() Position {
+	if s, ok := u.game.initialStates[u.index]; ok {
+		return s.position
+	}
+	return Position{}
+}
+
+// GetInitialTilePosition returns this unit's tile position at game start.
+func (u *Unit) GetInitialTilePosition() TilePosition {
+	if s, ok := u.game.initialStates[u.index]; ok {
+		return s.tilePosition
+	}
+	return TilePosition{}
+}
+
+// GetInitialHitPoints returns this unit's hit points at game start.
+func (u *Unit) GetInitialHitPoints() int {
+	if s, ok := u.game.initialStates[u.index]; ok {
+		return s.hitPoints
+	}
+	return 0
+}
+
+// GetInitialResources returns this unit's resource amount at game start.
+func (u *Unit) GetInitialResources() int {
+	if s, ok := u.game.initialStates[u.index]; ok {
+		return s.resources
+	}
+	return 0
+}
+
+// --- Bounding Box ---
+
+// GetLeft returns the left pixel edge of this unit's collision box.
+func (u *Unit) GetLeft() int {
+	return int(u.data.PositionX()) - u.GetType().DimensionLeft()
+}
+
+// GetTop returns the top pixel edge of this unit's collision box.
+func (u *Unit) GetTop() int {
+	return int(u.data.PositionY()) - u.GetType().DimensionUp()
+}
+
+// GetRight returns the right pixel edge of this unit's collision box.
+func (u *Unit) GetRight() int {
+	return int(u.data.PositionX()) + u.GetType().DimensionRight()
+}
+
+// GetBottom returns the bottom pixel edge of this unit's collision box.
+func (u *Unit) GetBottom() int {
+	return int(u.data.PositionY()) + u.GetType().DimensionDown()
+}
+
+// GetDistance returns the edge-to-edge distance to a position in pixels.
+// This matches BWAPI's distance calculation used for weapon range checks.
+func (u *Unit) GetDistance(pos Position) int {
+	l := u.GetLeft()
+	t := u.GetTop()
+	r := u.GetRight() + 1
+	b := u.GetBottom() + 1
+
+	px := int(pos.X)
+	py := int(pos.Y)
+
+	var xDist, yDist int
+	if px < l {
+		xDist = l - px
+	} else if px > r {
+		xDist = px - r
+	}
+	if py < t {
+		yDist = t - py
+	} else if py > b {
+		yDist = py - b
+	}
+
+	return int(math.Sqrt(float64(xDist*xDist + yDist*yDist)))
+}
+
+// GetDistanceToUnit returns the edge-to-edge distance to another unit in pixels.
+func (u *Unit) GetDistanceToUnit(other *Unit) int {
+	if other == nil {
+		return 0
+	}
+	l1, t1, r1, b1 := u.GetLeft(), u.GetTop(), u.GetRight()+1, u.GetBottom()+1
+	l2, t2, r2, b2 := other.GetLeft(), other.GetTop(), other.GetRight()+1, other.GetBottom()+1
+
+	var xDist, yDist int
+	if l1 > r2 {
+		xDist = l1 - r2
+	} else if l2 > r1 {
+		xDist = l2 - r1
+	}
+	if t1 > b2 {
+		yDist = t1 - b2
+	} else if t2 > b1 {
+		yDist = t2 - b1
+	}
+
+	return int(math.Sqrt(float64(xDist*xDist + yDist*yDist)))
+}
+
+// HasPath returns whether there is a ground path from this unit to a position.
+func (u *Unit) HasPath(pos Position) bool {
+	return u.game.HasPath(u.GetPosition(), pos)
+}
+
+// HasPathToUnit returns whether there is a ground path from this unit to another.
+func (u *Unit) HasPathToUnit(other *Unit) bool {
+	if other == nil {
+		return false
+	}
+	return u.game.HasPath(u.GetPosition(), other.GetPosition())
+}
+
+// --- Related Unit Collections ---
+
+// GetLarva returns all larva units associated with this hatchery/lair/hive.
+func (u *Unit) GetLarva() []*Unit {
+	allUnits := u.game.GetAllUnits()
+	larva := make([]*Unit, 0)
+	for _, unit := range allUnits {
+		if unit.GetType() == UnitTypeZergLarva && unit.GetHatchery() != nil &&
+			unit.GetHatchery().Index() == u.index {
+			larva = append(larva, unit)
+		}
+	}
+	return larva
+}
+
+// GetLoadedUnits returns all units loaded inside this transport/bunker.
+func (u *Unit) GetLoadedUnits() []*Unit {
+	allUnits := u.game.GetAllUnits()
+	loaded := make([]*Unit, 0)
+	for _, unit := range allUnits {
+		if unit.GetTransport() != nil && unit.GetTransport().Index() == u.index {
+			loaded = append(loaded, unit)
+		}
+	}
+	return loaded
+}
+
+// GetInterceptors returns all interceptor units belonging to this carrier.
+func (u *Unit) GetInterceptors() []*Unit {
+	allUnits := u.game.GetAllUnits()
+	interceptors := make([]*Unit, 0)
+	for _, unit := range allUnits {
+		if unit.GetType() == UnitTypeProtossInterceptor && unit.GetCarrier() != nil &&
+			unit.GetCarrier().Index() == u.index {
+			interceptors = append(interceptors, unit)
+		}
+	}
+	return interceptors
 }
 
 // --- Commands ---
