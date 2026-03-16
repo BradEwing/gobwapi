@@ -24,6 +24,7 @@ type Client struct {
 
 	connected bool
 	serverPID uint32
+	instIdx   int
 }
 
 // NewClient creates a new unconnected BWAPI client.
@@ -79,6 +80,7 @@ func (c *Client) Connect() error {
 	}
 
 	inst := c.gameTable.Instance(bestIdx)
+	c.instIdx = bestIdx
 	c.serverPID = inst.ServerProcessID()
 
 	dataPtr, dataClose, err := mapGameData(c.serverPID)
@@ -126,6 +128,9 @@ func (c *Client) Disconnect() {
 		return
 	}
 
+	if c.gameTable != nil {
+		c.gameTable.Instance(c.instIdx).SetIsConnected(false)
+	}
 	if c.pipe != nil {
 		c.pipe.Close()
 		c.pipe = nil
