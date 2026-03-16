@@ -150,6 +150,18 @@ func (g *Game) GetAllUnits() []*Unit {
 	return units
 }
 
+// GetInitialUnits returns all units that existed at game start
+// (minerals, geysers, static buildings, player units). Available during OnStart.
+func (g *Game) GetInitialUnits() []*Unit {
+	count := g.data.InitialUnitCount()
+	units := make([]*Unit, 0, count)
+	for i := 0; i < count; i++ {
+		ud := g.data.Unit(i)
+		units = append(units, &Unit{data: ud, game: g, index: i})
+	}
+	return units
+}
+
 // GetUnit returns a specific unit by its index.
 func (g *Game) GetUnit(index int) *Unit {
 	if index < 0 || index >= shm.MaxUnits {

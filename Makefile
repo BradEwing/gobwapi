@@ -16,6 +16,10 @@ build:
 	go build ./...
 	go build -o $(EXAMPLEBOT) ./cmd/examplebot
 
+.PHONY: run 
+run:
+	.\bin\examplebot.exe
+
 # Run all tests.
 .PHONY: test
 test:
