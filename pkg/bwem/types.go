@@ -29,6 +29,7 @@ type Tile struct {
 	AreaID       AreaId
 	NeutralIdx   int
 	MinAltitude  Altitude
+	internalData int
 }
 
 // Neutral represents a neutral unit on the map (mineral, geyser, or static building).

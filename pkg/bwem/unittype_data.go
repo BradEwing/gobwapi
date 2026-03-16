@@ -20,6 +20,12 @@ func isSpecialBuilding(ut bwapi.UnitType) bool {
 	return false
 }
 
+func neutralTilePosition(center bwapi.Position, tileW, tileH int) bwapi.TilePosition {
+	left := center.X - int32(tileW)*16
+	top := center.Y - int32(tileH)*16
+	return bwapi.TilePosition{X: left / 32, Y: top / 32}
+}
+
 // unitTypeTileSize returns the tile dimensions (width, height) for unit types
 // relevant to BWEM terrain analysis.
 func unitTypeTileSize(ut bwapi.UnitType) (w, h int) {

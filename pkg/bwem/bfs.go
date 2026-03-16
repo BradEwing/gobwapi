@@ -91,6 +91,44 @@ func walkDist(a, b bwapi.WalkPosition) int {
 	return int(math.Sqrt(dx*dx+dy*dy) * 8)
 }
 
+func distToRectangle(p bwapi.Position, topLeft bwapi.Position, size bwapi.Position) int {
+	bottomRight := bwapi.Position{X: topLeft.X + size.X - 1, Y: topLeft.Y + size.Y - 1}
+	dx := 0.0
+	dy := 0.0
+	if p.X < topLeft.X {
+		dx = float64(topLeft.X - p.X)
+	} else if p.X > bottomRight.X {
+		dx = float64(p.X - bottomRight.X)
+	}
+	if p.Y < topLeft.Y {
+		dy = float64(topLeft.Y - p.Y)
+	} else if p.Y > bottomRight.Y {
+		dy = float64(p.Y - bottomRight.Y)
+	}
+	return int(math.Sqrt(dx*dx + dy*dy))
+}
+
+func queenWiseDist(a, b bwapi.TilePosition) int {
+	dx := int(a.X - b.X)
+	dy := int(a.Y - b.Y)
+	if dx < 0 {
+		dx = -dx
+	}
+	if dy < 0 {
+		dy = -dy
+	}
+	if dx > dy {
+		return dx
+	}
+	return dy
+}
+
+func roundedDist(a, b bwapi.TilePosition) int {
+	dx := float64(a.X - b.X)
+	dy := float64(a.Y - b.Y)
+	return int(math.Sqrt(dx*dx+dy*dy) + 0.5)
+}
+
 func walkDistSq(a, b bwapi.WalkPosition) int {
 	dx := int(a.X - b.X)
 	dy := int(a.Y - b.Y)

@@ -140,21 +140,15 @@ func (m *Map) decideSeasOrLakes() {
 }
 
 func (m *Map) initializeNeutralData(game *bwapi.Game) {
-	neutralPlayer := game.Neutral()
-	if neutralPlayer == nil {
-		return
-	}
-	neutralIdx := neutralPlayer.Index()
-
-	for _, u := range game.GetAllUnits() {
-		p := u.GetPlayer()
-		if p == nil || p.Index() != neutralIdx {
+	for _, u := range game.GetStaticNeutralUnits() {
+		ut := u.GetType()
+		if !isMineralField(ut) && !isGeyser(ut) && !isSpecialBuilding(ut) {
 			continue
 		}
 
-		ut := u.GetType()
 		tw, th := unitTypeTileSize(ut)
-		tp := u.GetTilePosition()
+		pos := u.GetPosition()
+		tp := neutralTilePosition(pos, tw, th)
 
 		neutral := Neutral{
 			Unit:     u,
@@ -615,26 +609,32 @@ func (m *Map) computeAreas(temps []tempArea) {
 
 	for i := range m.minerals {
 		n := &m.neutrals[m.minerals[i].NeutralIdx]
-		tp := n.TilePos
-		if m.validTile(tp) {
-			t := &m.tiles[m.tileIndex(tp)]
-			if t.AreaID > 0 {
-				area := &m.areas[t.AreaID-1]
-				area.MineralIdxs = append(area.MineralIdxs, i)
-			}
+		if area := m.findNeutralArea(n); area != nil {
+			area.MineralIdxs = append(area.MineralIdxs, i)
 		}
 	}
 	for i := range m.geysers {
 		n := &m.neutrals[m.geysers[i].NeutralIdx]
-		tp := n.TilePos
-		if m.validTile(tp) {
+		if area := m.findNeutralArea(n); area != nil {
+			area.GeyserIdxs = append(area.GeyserIdxs, i)
+		}
+	}
+}
+
+func (m *Map) findNeutralArea(n *Neutral) *Area {
+	for dy := -1; dy <= n.TileH; dy++ {
+		for dx := -1; dx <= n.TileW; dx++ {
+			tp := bwapi.TilePosition{X: n.TilePos.X + int32(dx), Y: n.TilePos.Y + int32(dy)}
+			if !m.validTile(tp) {
+				continue
+			}
 			t := &m.tiles[m.tileIndex(tp)]
 			if t.AreaID > 0 {
-				area := &m.areas[t.AreaID-1]
-				area.GeyserIdxs = append(area.GeyserIdxs, i)
+				return &m.areas[t.AreaID-1]
 			}
 		}
 	}
+	return m.NearestArea(n.Pos.ToWalkPosition())
 }
 
 func (m *Map) createChokePoints(fronts []frontier) {
@@ -841,108 +841,63 @@ func (m *Map) createBases() {
 	}
 
 	for _, sl := range m.startLocations {
-		bestDist := math.MaxFloat64
+		bestDist := math.MaxInt32
 		bestIdx := -1
-		slCenter := bwapi.Position{
-			X: sl.X*32 + ccTileWidth*16,
-			Y: sl.Y*32 + ccTileHeight*16,
-		}
 		for i := range m.bases {
-			dx := float64(m.bases[i].Center.X - slCenter.X)
-			dy := float64(m.bases[i].Center.Y - slCenter.Y)
-			d := dx*dx + dy*dy
+			d := queenWiseDist(m.bases[i].Location, sl)
 			if d < bestDist {
 				bestDist = d
 				bestIdx = i
 			}
 		}
-		if bestIdx >= 0 && bestDist < float64(3*32*3*32) {
+		if bestIdx >= 0 && bestDist <= maxTilesBetweenStartAndBase {
 			m.bases[bestIdx].IsStartLocation = true
 		}
 	}
 }
 
+type baseResource struct {
+	neutralIdx int
+	isGeyser   bool
+	resIdx     int
+}
+
 func (m *Map) createBasesForArea(area *Area) {
-	availMinerals := make([]int, 0)
+	var remaining []baseResource
 	for _, mi := range area.MineralIdxs {
-		if m.minerals[mi].BaseIdx < 0 {
-			availMinerals = append(availMinerals, mi)
+		if m.minerals[mi].BaseIdx < 0 && !m.neutrals[m.minerals[mi].NeutralIdx].Blocking {
+			remaining = append(remaining, baseResource{m.minerals[mi].NeutralIdx, false, mi})
 		}
 	}
-	availGeysers := make([]int, 0)
 	for _, gi := range area.GeyserIdxs {
-		if m.geysers[gi].BaseIdx < 0 {
-			availGeysers = append(availGeysers, gi)
+		if m.geysers[gi].BaseIdx < 0 && !m.neutrals[m.geysers[gi].NeutralIdx].Blocking {
+			remaining = append(remaining, baseResource{m.geysers[gi].NeutralIdx, true, gi})
 		}
 	}
 
-	for len(availMinerals) > 0 || len(availGeysers) > 0 {
-		cx, cy := 0.0, 0.0
-		count := 0
-		for _, mi := range availMinerals {
-			n := &m.neutrals[m.minerals[mi].NeutralIdx]
-			cx += float64(n.Pos.X)
-			cy += float64(n.Pos.Y)
-			count++
-		}
-		for _, gi := range availGeysers {
-			n := &m.neutrals[m.geysers[gi].NeutralIdx]
-			cx += float64(n.Pos.X)
-			cy += float64(n.Pos.Y)
-			count++
-		}
-		if count == 0 {
-			break
-		}
-		cx /= float64(count)
-		cy /= float64(count)
+	for len(remaining) > 0 {
+		searchTopLeft, searchBottomRight := m.resourceSearchBox(remaining, area)
 
-		bestScore := 0.0
+		m.markResourceScores(remaining, area.ID)
+
+		bestScore := 0
 		bestTP := bwapi.TilePosition{X: -1, Y: -1}
-		searchRadius := maxTilesBetweenCCAndRes + ccTileWidth
 
-		centerTile := bwapi.TilePosition{
-			X: int32(cx) / 32,
-			Y: int32(cy) / 32,
-		}
-
-		for dy := -searchRadius; dy <= searchRadius; dy++ {
-			for dx := -searchRadius; dx <= searchRadius; dx++ {
-				tp := bwapi.TilePosition{
-					X: centerTile.X + int32(dx),
-					Y: centerTile.Y + int32(dy),
-				}
-				if !m.canPlaceCC(tp, area.ID) {
+		for ty := searchTopLeft.Y; ty <= searchBottomRight.Y; ty++ {
+			for tx := searchTopLeft.X; tx <= searchBottomRight.X; tx++ {
+				loc := bwapi.TilePosition{X: tx, Y: ty}
+				score := m.computeBaseLocationScore(loc, area.ID)
+				if score <= 0 {
 					continue
 				}
-
-				score := 0.0
-				ccCenter := bwapi.Position{
-					X: tp.X*32 + ccTileWidth*16,
-					Y: tp.Y*32 + ccTileHeight*16,
-				}
-
-				for _, mi := range availMinerals {
-					n := &m.neutrals[m.minerals[mi].NeutralIdx]
-					d := pixelDist(ccCenter, n.Pos)
-					if d > 0 && d < float64(maxTilesBetweenCCAndRes*32) {
-						score += 1.0 / d
-					}
-				}
-				for _, gi := range availGeysers {
-					n := &m.neutrals[m.geysers[gi].NeutralIdx]
-					d := pixelDist(ccCenter, n.Pos)
-					if d > 0 && d < float64(maxTilesBetweenCCAndRes*32) {
-						score += 3.0 / d
-					}
-				}
-
-				if score > bestScore {
+				if score > bestScore && m.validateBaseLocation(loc, area.ID) {
 					bestScore = score
-					bestTP = tp
+					bestTP = loc
 				}
 			}
 		}
+
+		m.clearResourceScores(remaining)
 
 		if bestTP.X < 0 {
 			break
@@ -958,31 +913,26 @@ func (m *Map) createBasesForArea(area *Area) {
 			AreaID: area.ID,
 		}
 
-		var remainMinerals []int
-		for _, mi := range availMinerals {
-			n := &m.neutrals[m.minerals[mi].NeutralIdx]
-			d := tileDist(bestTP, n.TilePos)
-			if d <= maxTilesBetweenCCAndRes {
-				m.minerals[mi].BaseIdx = base.Index
-				base.MineralIdxs = append(base.MineralIdxs, mi)
-			} else {
-				remainMinerals = append(remainMinerals, mi)
-			}
-		}
-		availMinerals = remainMinerals
+		ccTopLeft := bwapi.Position{X: bestTP.X * 32, Y: bestTP.Y * 32}
+		ccSize := bwapi.Position{X: ccTileWidth * 32, Y: ccTileHeight * 32}
 
-		var remainGeysers []int
-		for _, gi := range availGeysers {
-			n := &m.neutrals[m.geysers[gi].NeutralIdx]
-			d := tileDist(bestTP, n.TilePos)
-			if d <= maxTilesBetweenCCAndRes {
-				m.geysers[gi].BaseIdx = base.Index
-				base.GeyserIdxs = append(base.GeyserIdxs, gi)
+		var kept []baseResource
+		for _, r := range remaining {
+			n := &m.neutrals[r.neutralIdx]
+			d := distToRectangle(n.Pos, ccTopLeft, ccSize)
+			if d+2 <= maxTilesBetweenCCAndRes*32 {
+				if r.isGeyser {
+					m.geysers[r.resIdx].BaseIdx = base.Index
+					base.GeyserIdxs = append(base.GeyserIdxs, r.resIdx)
+				} else {
+					m.minerals[r.resIdx].BaseIdx = base.Index
+					base.MineralIdxs = append(base.MineralIdxs, r.resIdx)
+				}
 			} else {
-				remainGeysers = append(remainGeysers, gi)
+				kept = append(kept, r)
 			}
 		}
-		availGeysers = remainGeysers
+		remaining = kept
 
 		if len(base.MineralIdxs) > 0 || len(base.GeyserIdxs) > 0 {
 			area.BaseIdxs = append(area.BaseIdxs, base.Index)
@@ -993,42 +943,188 @@ func (m *Map) createBasesForArea(area *Area) {
 	}
 }
 
-func (m *Map) canPlaceCC(tp bwapi.TilePosition, areaID AreaId) bool {
-	for dy := 0; dy < ccTileHeight; dy++ {
-		for dx := 0; dx < ccTileWidth; dx++ {
-			check := bwapi.TilePosition{X: tp.X + int32(dx), Y: tp.Y + int32(dy)}
-			if !m.validTile(check) {
-				return false
-			}
-			t := &m.tiles[m.tileIndex(check)]
-			if !t.Buildable {
-				return false
-			}
-			if t.NeutralIdx >= 0 {
-				return false
+func (m *Map) resourceSearchBox(resources []baseResource, area *Area) (bwapi.TilePosition, bwapi.TilePosition) {
+	minX := int32(m.tileWidth)
+	minY := int32(m.tileHeight)
+	maxX := int32(0)
+	maxY := int32(0)
+	for _, r := range resources {
+		n := &m.neutrals[r.neutralIdx]
+		if n.TilePos.X < minX {
+			minX = n.TilePos.X
+		}
+		if n.TilePos.Y < minY {
+			minY = n.TilePos.Y
+		}
+		rx := n.TilePos.X + int32(n.TileW) - 1
+		ry := n.TilePos.Y + int32(n.TileH) - 1
+		if rx > maxX {
+			maxX = rx
+		}
+		if ry > maxY {
+			maxY = ry
+		}
+	}
+
+	topLeft := bwapi.TilePosition{
+		X: minX - int32(ccTileWidth) - int32(maxTilesBetweenCCAndRes),
+		Y: minY - int32(ccTileHeight) - int32(maxTilesBetweenCCAndRes),
+	}
+	bottomRight := bwapi.TilePosition{
+		X: maxX + 1 + int32(maxTilesBetweenCCAndRes),
+		Y: maxY + 1 + int32(maxTilesBetweenCCAndRes),
+	}
+
+	if topLeft.X < area.TopLeft.X {
+		topLeft.X = area.TopLeft.X
+	}
+	if topLeft.Y < area.TopLeft.Y {
+		topLeft.Y = area.TopLeft.Y
+	}
+	areaMaxX := area.BottomRight.X - int32(ccTileWidth) + 1
+	areaMaxY := area.BottomRight.Y - int32(ccTileHeight) + 1
+	if bottomRight.X > areaMaxX {
+		bottomRight.X = areaMaxX
+	}
+	if bottomRight.Y > areaMaxY {
+		bottomRight.Y = areaMaxY
+	}
+
+	return topLeft, bottomRight
+}
+
+func (m *Map) markResourceScores(resources []baseResource, areaID AreaId) {
+	for _, r := range resources {
+		n := &m.neutrals[r.neutralIdx]
+		resTopLeft := bwapi.Position{X: n.TilePos.X * 32, Y: n.TilePos.Y * 32}
+		resSize := bwapi.Position{X: int32(n.TileW) * 32, Y: int32(n.TileH) * 32}
+
+		rangeX := int(ccTileWidth) + maxTilesBetweenCCAndRes
+		rangeY := int(ccTileHeight) + maxTilesBetweenCCAndRes
+
+		for dy := -int(ccTileHeight) - maxTilesBetweenCCAndRes; dy < int(n.TileH)+rangeY; dy++ {
+			for dx := -int(ccTileWidth) - maxTilesBetweenCCAndRes; dx < int(n.TileW)+rangeX; dx++ {
+				tp := bwapi.TilePosition{X: n.TilePos.X + int32(dx), Y: n.TilePos.Y + int32(dy)}
+				if !m.validTile(tp) {
+					continue
+				}
+				t := &m.tiles[m.tileIndex(tp)]
+				if t.AreaID != areaID {
+					continue
+				}
+
+				tileCenter := bwapi.Position{X: tp.X*32 + 16, Y: tp.Y*32 + 16}
+				pixDist := distToRectangle(tileCenter, resTopLeft, resSize)
+				tileDist := (pixDist + 16) / 32
+				score := maxTilesBetweenCCAndRes + resourceExclusionGap - tileDist
+				if score <= 0 {
+					continue
+				}
+				if r.isGeyser {
+					score *= 3
+				}
+				t.internalData += score
 			}
 		}
 	}
+
+	for _, r := range resources {
+		n := &m.neutrals[r.neutralIdx]
+		for dy := -resourceExclusionGap; dy < int(n.TileH)+resourceExclusionGap; dy++ {
+			for dx := -resourceExclusionGap; dx < int(n.TileW)+resourceExclusionGap; dx++ {
+				tp := bwapi.TilePosition{X: n.TilePos.X + int32(dx), Y: n.TilePos.Y + int32(dy)}
+				if m.validTile(tp) {
+					m.tiles[m.tileIndex(tp)].internalData = -1
+				}
+			}
+		}
+	}
+}
+
+func (m *Map) clearResourceScores(resources []baseResource) {
+	for _, r := range resources {
+		n := &m.neutrals[r.neutralIdx]
+		rangeX := int(ccTileWidth) + maxTilesBetweenCCAndRes
+		rangeY := int(ccTileHeight) + maxTilesBetweenCCAndRes
+
+		for dy := -int(ccTileHeight) - maxTilesBetweenCCAndRes; dy < int(n.TileH)+rangeY; dy++ {
+			for dx := -int(ccTileWidth) - maxTilesBetweenCCAndRes; dx < int(n.TileW)+rangeX; dx++ {
+				tp := bwapi.TilePosition{X: n.TilePos.X + int32(dx), Y: n.TilePos.Y + int32(dy)}
+				if m.validTile(tp) {
+					m.tiles[m.tileIndex(tp)].internalData = 0
+				}
+			}
+		}
+	}
+}
+
+func (m *Map) computeBaseLocationScore(loc bwapi.TilePosition, areaID AreaId) int {
+	score := 0
+	for dy := 0; dy < ccTileHeight; dy++ {
+		for dx := 0; dx < ccTileWidth; dx++ {
+			tp := bwapi.TilePosition{X: loc.X + int32(dx), Y: loc.Y + int32(dy)}
+			if !m.validTile(tp) {
+				return -1
+			}
+			t := &m.tiles[m.tileIndex(tp)]
+			if !t.Buildable {
+				return -1
+			}
+			if t.AreaID != areaID {
+				return -1
+			}
+			if t.internalData < 0 {
+				return -1
+			}
+			if t.NeutralIdx >= 0 {
+				n := &m.neutrals[t.NeutralIdx]
+				if isSpecialBuilding(n.UnitType) {
+					return -1
+				}
+			}
+			score += t.internalData
+		}
+	}
+	return score
+}
+
+func (m *Map) validateBaseLocation(loc bwapi.TilePosition, areaID AreaId) bool {
+	for dy := -resourceExclusionGap; dy < ccTileHeight+resourceExclusionGap; dy++ {
+		for dx := -resourceExclusionGap; dx < ccTileWidth+resourceExclusionGap; dx++ {
+			tp := bwapi.TilePosition{X: loc.X + int32(dx), Y: loc.Y + int32(dy)}
+			if !m.validTile(tp) {
+				continue
+			}
+			t := &m.tiles[m.tileIndex(tp)]
+			if t.NeutralIdx >= 0 {
+				n := &m.neutrals[t.NeutralIdx]
+				if isGeyser(n.UnitType) {
+					return false
+				}
+				if isMineralField(n.UnitType) {
+					nRes := m.findMineralByNeutralIdx(t.NeutralIdx)
+					if nRes != nil && nRes.Resources > 8 {
+						return false
+					}
+				}
+			}
+		}
+	}
+
+	for i := range m.bases {
+		if roundedDist(m.bases[i].Location, loc) < minTilesBetweenBases {
+			return false
+		}
+	}
+
 	return true
 }
 
-func pixelDist(a, b bwapi.Position) float64 {
-	dx := float64(a.X - b.X)
-	dy := float64(a.Y - b.Y)
-	return math.Sqrt(dx*dx + dy*dy)
-}
-
-func tileDist(a, b bwapi.TilePosition) int {
-	dx := int(a.X - b.X)
-	dy := int(a.Y - b.Y)
-	if dx < 0 {
-		dx = -dx
+func (m *Map) findMineralByNeutralIdx(neutralIdx int) *Mineral {
+	for i := range m.minerals {
+		if m.minerals[i].NeutralIdx == neutralIdx {
+			return &m.minerals[i]
+		}
 	}
-	if dy < 0 {
-		dy = -dy
-	}
-	if dx > dy {
-		return dx
-	}
-	return dy
+	return nil
 }

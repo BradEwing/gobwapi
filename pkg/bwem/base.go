@@ -2,7 +2,7 @@ package bwem
 
 import "github.com/bradewing/gobwapi/pkg/bwapi"
 
-// Base represents a potential base location (Command Center placement).
+// Base represents a potential base location (resource depot placement).
 type Base struct {
 	Index           int
 	Location        bwapi.TilePosition
