@@ -119,4 +119,4 @@ func (p *Player) IsEnemy(other *Player) bool {
 	return p.data.IsEnemy(other.index)
 }
 
-func (p *Player) Color() int { return int(p.data.Color()) }
+func (p *Player) Color() Color { return Color(p.data.Color()) }

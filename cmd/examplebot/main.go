@@ -113,16 +113,14 @@ func (b *ExampleBot) drawBases(game *bwapi.Game) {
 	if b.bwem == nil {
 		return
 	}
-	green := 117
-	purple := 164
 	for _, base := range b.bwem.Bases() {
 		left := int(base.Location.X) * 32
 		top := int(base.Location.Y) * 32
 		right := left + 4*32
 		bottom := top + 3*32
-		color := green
+		color := bwapi.ColorGreen
 		if base.IsStartLocation {
-			color = purple
+			color = bwapi.ColorPurple
 		}
 		game.DrawBoxMap(left, top, right, bottom, color, false)
 		game.DrawTextMap(left+4, top+4, fmt.Sprintf("Base (area %d)", base.AreaID))
@@ -130,7 +128,6 @@ func (b *ExampleBot) drawBases(game *bwapi.Game) {
 }
 
 func (b *ExampleBot) drawDepots(game *bwapi.Game) {
-	cyan := 128
 	for _, unit := range game.GetAllUnits() {
 		ut := unit.GetType()
 		if ut != bwapi.UnitTypeTerranCommandCenter &&
@@ -141,7 +138,7 @@ func (b *ExampleBot) drawDepots(game *bwapi.Game) {
 		pos := unit.GetPosition()
 		left := int(pos.X) - 4*16
 		top := int(pos.Y) - 3*16
-		game.DrawBoxMap(left, top, left+4*32, top+3*32, cyan, false)
+		game.DrawBoxMap(left, top, left+4*32, top+3*32, bwapi.ColorCyan, false)
 	}
 }
 
