@@ -42,12 +42,9 @@ func (bw *BWClient) Run(module AIModule) {
 		}
 
 		if wasInGame && !inGame {
-			wasInGame = false
 			bw.client.Disconnect()
-			log.Println("Game ended. Waiting for next game...")
-			bw.client.Reconnect()
-			bw.game = NewGame(bw.client.Data())
-			continue
+			log.Println("Game ended.")
+			return
 		}
 
 		wasInGame = inGame
