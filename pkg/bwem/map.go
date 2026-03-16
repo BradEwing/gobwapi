@@ -192,6 +192,9 @@ func (m *Map) OnMineralDestroyed(unit *bwapi.Unit) {
 				base := &m.bases[m.minerals[i].BaseIdx]
 				base.MineralIdxs = removeInt(base.MineralIdxs, i)
 			}
+			if area := m.findNeutralArea(n); area != nil {
+				area.MineralIdxs = removeInt(area.MineralIdxs, i)
+			}
 			if n.Blocking {
 				m.unblockNeutral(m.minerals[i].NeutralIdx)
 			}

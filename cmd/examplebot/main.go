@@ -115,12 +115,17 @@ func (b *ExampleBot) drawBases(game *bwapi.Game) {
 		return
 	}
 	green := 117
+	purple := 164
 	for _, base := range b.bwem.Bases() {
 		left := int(base.Location.X) * 32
 		top := int(base.Location.Y) * 32
 		right := left + 4*32
 		bottom := top + 3*32
-		game.DrawBoxMap(left, top, right, bottom, green, false)
+		color := green
+		if base.IsStartLocation {
+			color = purple
+		}
+		game.DrawBoxMap(left, top, right, bottom, color, false)
 		game.DrawTextMap(left+4, top+4, fmt.Sprintf("Base (area %d)", base.AreaID))
 	}
 }

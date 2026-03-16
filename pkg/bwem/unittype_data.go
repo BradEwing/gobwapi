@@ -13,11 +13,7 @@ func isGeyser(ut bwapi.UnitType) bool {
 }
 
 func isSpecialBuilding(ut bwapi.UnitType) bool {
-	switch ut {
-	case bwapi.UnitTypeSpecialIndependantStarport:
-		return true
-	}
-	return false
+	return ut == bwapi.UnitTypeSpecialIndependantStarport
 }
 
 func neutralTilePosition(center bwapi.Position, tileW, tileH int) bwapi.TilePosition {

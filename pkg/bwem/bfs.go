@@ -29,24 +29,9 @@ var dirs8 = [8][2]int32{
 	{-1, 1}, {0, 1}, {1, 1},
 }
 
-var dirs4 = [4][2]int32{
-	{0, -1}, {-1, 0}, {1, 0}, {0, 1},
-}
-
 func (m *Map) walkNeighbors8(wp bwapi.WalkPosition) []bwapi.WalkPosition {
 	var result []bwapi.WalkPosition
 	for _, d := range dirs8 {
-		n := bwapi.WalkPosition{X: wp.X + d[0], Y: wp.Y + d[1]}
-		if m.validWalk(n) {
-			result = append(result, n)
-		}
-	}
-	return result
-}
-
-func (m *Map) walkNeighbors4(wp bwapi.WalkPosition) []bwapi.WalkPosition {
-	var result []bwapi.WalkPosition
-	for _, d := range dirs4 {
 		n := bwapi.WalkPosition{X: wp.X + d[0], Y: wp.Y + d[1]}
 		if m.validWalk(n) {
 			result = append(result, n)

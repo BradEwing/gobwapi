@@ -150,9 +150,9 @@ func (g *Game) GetAllUnits() []*Unit {
 	return units
 }
 
-// GetStaticNeutralUnits returns neutral units that existed at game start
-// (minerals, geysers, static buildings). Available during OnStart.
-func (g *Game) GetStaticNeutralUnits() []*Unit {
+// GetInitialUnits returns all units that existed at game start
+// (minerals, geysers, static buildings, player units). Available during OnStart.
+func (g *Game) GetInitialUnits() []*Unit {
 	count := g.data.InitialUnitCount()
 	units := make([]*Unit, 0, count)
 	for i := 0; i < count; i++ {

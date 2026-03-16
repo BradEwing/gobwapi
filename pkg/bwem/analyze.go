@@ -140,7 +140,7 @@ func (m *Map) decideSeasOrLakes() {
 }
 
 func (m *Map) initializeNeutralData(game *bwapi.Game) {
-	for _, u := range game.GetStaticNeutralUnits() {
+	for _, u := range game.GetInitialUnits() {
 		ut := u.GetType()
 		if !isMineralField(ut) && !isGeyser(ut) && !isSpecialBuilding(ut) {
 			continue
@@ -232,14 +232,14 @@ func (m *Map) computeAltitude() {
 			}
 			for _, n := range m.walkNeighbors8(wp) {
 				ni := m.miniTileIndex(n)
-				if m.miniTiles[ni].Alt == 0 && altSet[ni] {
+				if altSet[ni] {
 					dx := n.X - wp.X
 					dy := n.Y - wp.Y
 					d := 8
 					if dx != 0 && dy != 0 {
 						d = 11
 					}
-					heap.Push(pq, pqItem{wp: wp, dist: d})
+					heap.Push(pq, pqItem{wp: wp, dist: int(m.miniTiles[ni].Alt) + d})
 					break
 				}
 			}
@@ -274,17 +274,14 @@ func (m *Map) computeAltitude() {
 func (m *Map) processBlockingNeutrals() {
 	for i := range m.neutrals {
 		n := &m.neutrals[i]
-		if isMineralField(n.UnitType) || isGeyser(n.UnitType) || isSpecialBuilding(n.UnitType) {
-			doors := m.countDoors(n)
-			if doors >= 2 {
-				n.Blocking = true
-			}
+		if m.countDoors(n) >= 2 {
+			n.Blocking = true
 		}
 	}
 }
 
 func (m *Map) countDoors(n *Neutral) int {
-	visited := make(map[int]bool)
+	visited := make([]bool, len(m.miniTiles))
 	var seeds []bwapi.WalkPosition
 
 	for dy := -1; dy <= n.TileH; dy++ {
@@ -436,7 +433,7 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 
 			shouldMerge := st.count < smallAreaMaxMiniTiles ||
 				(lt.topAltitude > 0 && float64(st.topAltitude)/float64(lt.topAltitude) >= altitudeMergeRatio) ||
-				m.containsStartLocation(st)
+				m.containsStartLocation(st, resolveID)
 
 			if shouldMerge {
 				lt.count += st.count
@@ -445,8 +442,12 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 
 				for _, id := range ids[2:] {
 					t := &temps[id-1]
-					lt.count += t.count
-					t.mergedInto = larger
+					if m.containsStartLocation(t, resolveID) {
+						fronts = append(fronts, frontier{wp: wa.wp, area1: larger, area2: id})
+					} else {
+						lt.count += t.count
+						t.mergedInto = larger
+					}
 				}
 			} else {
 				fronts = append(fronts, frontier{
@@ -481,12 +482,13 @@ func (m *Map) computeTempAreas() ([]tempArea, []frontier) {
 	return temps, filtered
 }
 
-func (m *Map) containsStartLocation(ta *tempArea) bool {
+func (m *Map) containsStartLocation(ta *tempArea, resolveID func(AreaId) AreaId) bool {
+	resolved := resolveID(ta.id)
 	for _, sl := range m.startLocations {
 		wp := bwapi.WalkPosition{X: sl.X*4 + 2, Y: sl.Y*4 + 2}
 		if m.validWalk(wp) {
 			idx := m.miniTileIndex(wp)
-			if m.miniTiles[idx].AreaID == ta.id {
+			if resolveID(m.miniTiles[idx].AreaID) == resolved {
 				return true
 			}
 		}
@@ -994,38 +996,28 @@ func (m *Map) resourceSearchBox(resources []baseResource, area *Area) (bwapi.Til
 }
 
 func (m *Map) markResourceScores(resources []baseResource, areaID AreaId) {
-	for _, r := range resources {
+	for ri, r := range resources {
 		n := &m.neutrals[r.neutralIdx]
 		resTopLeft := bwapi.Position{X: n.TilePos.X * 32, Y: n.TilePos.Y * 32}
 		resSize := bwapi.Position{X: int32(n.TileW) * 32, Y: int32(n.TileH) * 32}
+		isGeyser := resources[ri].isGeyser
 
-		rangeX := int(ccTileWidth) + maxTilesBetweenCCAndRes
-		rangeY := int(ccTileHeight) + maxTilesBetweenCCAndRes
-
-		for dy := -int(ccTileHeight) - maxTilesBetweenCCAndRes; dy < int(n.TileH)+rangeY; dy++ {
-			for dx := -int(ccTileWidth) - maxTilesBetweenCCAndRes; dx < int(n.TileW)+rangeX; dx++ {
-				tp := bwapi.TilePosition{X: n.TilePos.X + int32(dx), Y: n.TilePos.Y + int32(dy)}
-				if !m.validTile(tp) {
-					continue
-				}
-				t := &m.tiles[m.tileIndex(tp)]
-				if t.AreaID != areaID {
-					continue
-				}
-
-				tileCenter := bwapi.Position{X: tp.X*32 + 16, Y: tp.Y*32 + 16}
-				pixDist := distToRectangle(tileCenter, resTopLeft, resSize)
-				tileDist := (pixDist + 16) / 32
-				score := maxTilesBetweenCCAndRes + resourceExclusionGap - tileDist
-				if score <= 0 {
-					continue
-				}
-				if r.isGeyser {
-					score *= 3
-				}
-				t.internalData += score
+		m.forEachResourceInfluenceTile([]baseResource{r}, func(tp bwapi.TilePosition, t *Tile) {
+			if t.AreaID != areaID {
+				return
 			}
-		}
+			tileCenter := bwapi.Position{X: tp.X*32 + 16, Y: tp.Y*32 + 16}
+			pixDist := distToRectangle(tileCenter, resTopLeft, resSize)
+			tileDist := (pixDist + 16) / 32
+			score := maxTilesBetweenCCAndRes + resourceExclusionGap - tileDist
+			if score <= 0 {
+				return
+			}
+			if isGeyser {
+				score *= 3
+			}
+			t.internalData += score
+		})
 	}
 
 	for _, r := range resources {
@@ -1042,6 +1034,12 @@ func (m *Map) markResourceScores(resources []baseResource, areaID AreaId) {
 }
 
 func (m *Map) clearResourceScores(resources []baseResource) {
+	m.forEachResourceInfluenceTile(resources, func(_ bwapi.TilePosition, t *Tile) {
+		t.internalData = 0
+	})
+}
+
+func (m *Map) forEachResourceInfluenceTile(resources []baseResource, fn func(bwapi.TilePosition, *Tile)) {
 	for _, r := range resources {
 		n := &m.neutrals[r.neutralIdx]
 		rangeX := int(ccTileWidth) + maxTilesBetweenCCAndRes
@@ -1051,7 +1049,7 @@ func (m *Map) clearResourceScores(resources []baseResource) {
 			for dx := -int(ccTileWidth) - maxTilesBetweenCCAndRes; dx < int(n.TileW)+rangeX; dx++ {
 				tp := bwapi.TilePosition{X: n.TilePos.X + int32(dx), Y: n.TilePos.Y + int32(dy)}
 				if m.validTile(tp) {
-					m.tiles[m.tileIndex(tp)].internalData = 0
+					fn(tp, &m.tiles[m.tileIndex(tp)])
 				}
 			}
 		}
