@@ -22,8 +22,7 @@ func (b *ExampleBot) OnStart(game *bwapi.Game) {
 		log.Printf("Playing as: %s (%s)", self.Name(), self.GetRace())
 	}
 
-	game.EnableFlag(0)
-	game.EnableFlag(1)
+	game.EnableFlag(0) // UserInput — allow user keyboard/mouse input
 
 	game.SetLocalSpeed(20)
 

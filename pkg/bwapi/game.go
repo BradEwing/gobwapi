@@ -133,8 +133,9 @@ func (g *Game) GetPlayers() []*Player {
 
 // --- Units ---
 
-// GetAllUnits returns all visible units from the unit array.
+// GetAllUnits returns all units visible to the self player.
 func (g *Game) GetAllUnits() []*Unit {
+	selfIdx := int(g.data.SelfIndex())
 	units := make([]*Unit, 0, shm.UnitArraySize)
 	for i := 0; i < shm.UnitArraySize; i++ {
 		idx := int(g.data.UnitArrayEntry(i))
@@ -143,6 +144,9 @@ func (g *Game) GetAllUnits() []*Unit {
 		}
 		ud := g.data.Unit(idx)
 		if !ud.Exists() {
+			continue
+		}
+		if !ud.IsVisibleTo(selfIdx) {
 			continue
 		}
 		units = append(units, &Unit{data: ud, game: g, index: idx})
