@@ -6,11 +6,10 @@ import (
 
 // initialUnitState stores a snapshot of a unit's state at game start.
 type initialUnitState struct {
-	unitType     UnitType
-	position     Position
-	tilePosition TilePosition
-	hitPoints    int
-	resources    int
+	unitType  UnitType
+	position  Position
+	hitPoints int
+	resources int
 }
 
 // Game provides the main interface for reading game state and issuing commands.
@@ -46,11 +45,10 @@ func (g *Game) SnapshotInitialState() {
 	for i := 0; i < count; i++ {
 		ud := g.data.Unit(i)
 		g.initialStates[i] = initialUnitState{
-			unitType:     UnitType(ud.TypeID()),
-			position:     Position{X: ud.PositionX(), Y: ud.PositionY()},
-			tilePosition: TilePosition{X: ud.PositionX() / 32, Y: ud.PositionY() / 32},
-			hitPoints:    int(ud.HitPoints()),
-			resources:    int(ud.Resources()),
+			unitType:  UnitType(ud.TypeID()),
+			position:  Position{X: ud.PositionX(), Y: ud.PositionY()},
+			hitPoints: int(ud.HitPoints()),
+			resources: int(ud.Resources()),
 		}
 	}
 }
@@ -324,10 +322,10 @@ func (g *Game) SetGUI(enabled bool) {
 
 // --- API Info ---
 
-func (g *Game) GetRevision() int        { return int(g.data.Revision()) }
-func (g *Game) GetClientVersion() int   { return int(g.data.ClientVersion()) }
-func (g *Game) IsDebug() bool           { return g.data.IsDebug() }
-func (g *Game) GetInstanceNumber() int  { return int(g.data.InstanceID()) }
+func (g *Game) Revision() int        { return int(g.data.Revision()) }
+func (g *Game) ClientVersion() int   { return int(g.data.ClientVersion()) }
+func (g *Game) IsDebug() bool        { return g.data.IsDebug() }
+func (g *Game) InstanceNumber() int  { return int(g.data.InstanceID()) }
 func (g *Game) LatencyTime() int        { return int(g.data.LatencyTime()) }
 func (g *Game) RemainingLatencyFrames() int { return int(g.data.RemainingLatencyFrames()) }
 func (g *Game) RemainingLatencyTime() int   { return int(g.data.RemainingLatencyTime()) }
@@ -381,16 +379,15 @@ func (g *Game) SetMap(filename string) {
 }
 
 // SetAlliance changes alliance status with another player.
+// BWAPI encodes: 0=unallied, 1=allied, 2=allied+shared victory.
 func (g *Game) SetAlliance(playerID int, allied, alliedVictory bool) {
-	v1 := int32(playerID)
 	v2 := int32(0)
-	if allied {
+	if allied && alliedVictory {
+		v2 = 2
+	} else if allied {
 		v2 = 1
 	}
-	if alliedVictory {
-		v2 = 2
-	}
-	g.data.AddCommand(int32(CommandTypeSetAllies), v1, v2)
+	g.data.AddCommand(int32(CommandTypeSetAllies), int32(playerID), v2)
 }
 
 // SetVision shares or unshares vision with another player.
@@ -692,18 +689,7 @@ func (g *Game) getUnitsInRadiusFiltered(x, y, radius int, filter func(*Unit) boo
 
 // GetUnitsInRadius returns all visible units within a pixel radius from a point.
 func (g *Game) GetUnitsInRadius(x, y, radius int) []*Unit {
-	r2 := int64(radius) * int64(radius)
-	allUnits := g.GetAllUnits()
-	result := make([]*Unit, 0)
-	for _, u := range allUnits {
-		pos := u.GetPosition()
-		dx := int64(pos.X) - int64(x)
-		dy := int64(pos.Y) - int64(y)
-		if dx*dx+dy*dy <= r2 {
-			result = append(result, u)
-		}
-	}
-	return result
+	return g.getUnitsInRadiusFiltered(x, y, radius, nil)
 }
 
 // GetClosestUnit returns the closest visible unit to a pixel position
@@ -761,29 +747,21 @@ func (g *Game) CanBuildHere(pos TilePosition, unitType UnitType, builder *Unit, 
 	mapW := int(g.data.MapWidth())
 	mapH := int(g.data.MapHeight())
 
-	// Check map bounds
 	if tx < 0 || ty < 0 || tx+tw > mapW || ty+th > mapH {
 		return false
 	}
 
-	// Special case: refineries must be placed on a geyser
 	if unitType.IsRefinery() {
-		geyserFound := false
-		geysers := g.GetStaticGeysers()
-		for _, geyser := range geysers {
-			gtp := geyser.GetInitialTilePosition()
+		for _, geyser := range g.GetGeysers() {
+			gtp := geyser.GetTilePosition()
 			if int(gtp.X) == tx && int(gtp.Y) == ty {
-				geyserFound = true
-				break
+				return true
 			}
 		}
-		if !geyserFound {
-			return false
-		}
-		return true
+		return false
 	}
 
-	// Check each tile in the building footprint
+	needsCreep := unitType.RequiresCreep()
 	for x := tx; x < tx+tw; x++ {
 		for y := ty; y < ty+th; y++ {
 			if !g.IsBuildable(x, y) {
@@ -792,38 +770,43 @@ func (g *Game) CanBuildHere(pos TilePosition, unitType UnitType, builder *Unit, 
 			if checkExplored && !g.IsExplored(x, y) {
 				return false
 			}
-			// Check occupation (skip builder's tile)
 			if g.IsOccupied(x, y) {
 				if builder != nil {
 					btp := builder.GetTilePosition()
-					btw := builder.GetType().TileWidth()
-					bth := builder.GetType().TileHeight()
-					bx := int(btp.X)
-					by := int(btp.Y)
-					if x >= bx && x < bx+btw && y >= by && y < by+bth {
+					bx, by := int(btp.X), int(btp.Y)
+					if x == bx && y == by {
 						continue
 					}
 				}
 				return false
 			}
-		}
-	}
-
-	// Creep requirement
-	if unitType.RequiresCreep() {
-		for x := tx; x < tx+tw; x++ {
-			for y := ty; y < ty+th; y++ {
-				if !g.HasCreep(x, y) {
-					return false
-				}
+			if needsCreep && !g.HasCreep(x, y) {
+				return false
+			}
+			if !needsCreep && unitType.GetRace() != RaceZerg && g.HasCreep(x, y) {
+				return false
 			}
 		}
 	}
 
-	// Psi power requirement
-	if unitType.RequiresPsi() {
-		if !g.HasPowerForType(tx, ty, unitType) {
-			return false
+	if unitType.RequiresPsi() && !g.HasPowerForType(tx, ty, unitType) {
+		return false
+	}
+
+	if unitType.IsResourceDepot() {
+		for _, mineral := range g.GetStaticMinerals() {
+			mtp := mineral.GetTilePosition()
+			mx, my := int(mtp.X), int(mtp.Y)
+			if mx >= tx-5 && mx <= tx+tw+2 && my >= ty-4 && my <= ty+th+2 {
+				return false
+			}
+		}
+		for _, geyser := range g.GetStaticGeysers() {
+			gtp := geyser.GetTilePosition()
+			gx, gy := int(gtp.X), int(gtp.Y)
+			if gx >= tx-7 && gx <= tx+tw+4 && gy >= ty-5 && gy <= ty+th+2 {
+				return false
+			}
 		}
 	}
 
@@ -838,21 +821,25 @@ func (g *Game) CanMake(unitType UnitType, builder *Unit) bool {
 		return false
 	}
 
-	// Check unit availability
 	if !self.IsUnitAvailable(unitType) {
 		return false
 	}
 
-	// Check builder type
-	builderType, builderCount := unitType.WhatBuilds()
+	builderType, _ := unitType.WhatBuilds()
 	if builder != nil {
 		if builder.GetType() != builderType {
 			return false
 		}
-		_ = builderCount // count check not needed for most units
+		if builderType.IsBuilding() && builderType.GetRace() == RaceZerg {
+			if unitType == UnitTypeZergLarva {
+				return true
+			}
+			if builder.GetLarva() == nil || len(builder.GetLarva()) == 0 {
+				return false
+			}
+		}
 	}
 
-	// Check resources
 	if self.Minerals() < unitType.MineralPrice() {
 		return false
 	}
@@ -860,27 +847,27 @@ func (g *Game) CanMake(unitType UnitType, builder *Unit) bool {
 		return false
 	}
 
-	// Check supply (supplyRequired is in BWAPI doubled format: 2 = 1 supply)
 	supplyReq := unitType.SupplyRequired()
 	if unitType.IsTwoUnitsInOneEgg() {
 		supplyReq *= 2
 	}
 	if supplyReq > 0 {
 		race := unitType.GetRace()
-		if self.SupplyUsedForRace(race)+supplyReq > self.SupplyTotalForRace(race) {
+		supplyFree := builderType.SupplyRequired()
+		if builderType.GetRace() != race {
+			supplyFree = 0
+		}
+		if self.SupplyUsedForRace(race)-supplyFree+supplyReq > self.SupplyTotalForRace(race) {
 			return false
 		}
 	}
 
-	// Check required units exist (completed count > 0)
-	requiredUnits := unitType.RequiredUnits()
-	for reqType, reqCount := range requiredUnits {
+	for reqType, reqCount := range unitType.RequiredUnits() {
 		if self.CompletedUnitCount(reqType) < reqCount {
 			return false
 		}
 	}
 
-	// Check required tech
 	reqTech := unitType.RequiredTech()
 	if reqTech != TechTypeNone && !self.HasResearched(reqTech) {
 		return false

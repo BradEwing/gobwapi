@@ -16,19 +16,14 @@ var bPsiFieldMask = [10][16]bool{
 	{false, false, false, false, false, true, true, true, true, true, true, false, false, false, false, false},
 }
 
-// HasPowerPrecise returns whether a pixel position is powered by a Pylon.
-// If unitType is provided and is a valid non-psi-requiring type, returns true.
+// HasPowerPrecise returns whether a pixel position is powered by any completed Pylon.
 func (g *Game) HasPowerPrecise(x, y int) bool {
 	return g.hasPowerCheck(x, y, UnitTypeNone)
 }
 
 // HasPower returns whether a build tile is powered by a Pylon.
-// Uses the center of the tile for the power check.
 func (g *Game) HasPower(tileX, tileY int) bool {
-	// Check center pixel of the tile
-	px := tileX*32 + 16
-	py := tileY*32 + 16
-	return g.hasPowerCheck(px, py, UnitTypeNone)
+	return g.hasPowerCheck(tileX*32, tileY*32, UnitTypeNone)
 }
 
 // HasPowerForType returns whether a building of the given type can be powered
@@ -44,19 +39,14 @@ func (g *Game) HasPowerForType(tileX, tileY int, unitType UnitType) bool {
 
 // hasPowerCheck tests if pixel (x,y) falls inside any completed Pylon's power field.
 func (g *Game) hasPowerCheck(x, y int, unitType UnitType) bool {
-	// Short-circuit: non-psi-requiring buildings are always "powered"
 	if utInRange(unitType) && unitType != UnitTypeNone &&
 		(!unitType.RequiresPsi() || !unitType.IsBuilding()) {
 		return true
 	}
 
-	allUnits := g.GetAllUnits()
 	selfIdx := int(g.data.SelfIndex())
-	for _, u := range allUnits {
-		if u.GetType() != UnitTypeProtossPylon {
-			continue
-		}
-		if !u.IsCompleted() {
+	for _, u := range g.GetAllUnits() {
+		if u.GetType() != UnitTypeProtossPylon || !u.IsCompleted() {
 			continue
 		}
 		if int(u.data.PlayerIndex()) != selfIdx {

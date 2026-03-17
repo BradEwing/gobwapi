@@ -1,8 +1,6 @@
 package bwapi
 
 import (
-	"math"
-
 	"github.com/bradewing/gobwapi/internal/shm"
 )
 
@@ -149,8 +147,7 @@ func (u *Unit) IsBraking() bool             { return u.data.IsBraking() }
 func (u *Unit) IsInterruptible() bool       { return u.data.IsInterruptible() }
 func (u *Unit) IsParasited() bool           { return u.data.IsParasited() }
 func (u *Unit) IsStartingAttack() bool      { return u.data.IsStartingAttack() }
-func (u *Unit) IsStuck() bool               { return u.data.IsStuck() }
-func (u *Unit) RecentlyAttacked() bool      { return u.data.RecentlyAttacked() }
+func (u *Unit) IsStuck() bool { return u.data.IsStuck() }
 
 // --- Derived Status Flags ---
 
@@ -188,9 +185,7 @@ func (u *Unit) IsCarryingGas() bool { return u.data.CarryResourceType() == 1 }
 func (u *Unit) IsCarryingMinerals() bool { return u.data.CarryResourceType() == 2 }
 
 // IsLoaded returns whether this unit is loaded inside a transport.
-func (u *Unit) IsLoaded() bool {
-	return u.data.TransportIndex() >= 0 && u.data.TransportIndex() < int32(shm.MaxUnits)
-}
+func (u *Unit) IsLoaded() bool { return u.GetTransport() != nil }
 
 // IsSieged returns whether this unit is in siege mode.
 func (u *Unit) IsSieged() bool {
@@ -202,12 +197,7 @@ func (u *Unit) IsSieged() bool {
 func (u *Unit) IsFollowing() bool { return u.GetOrder() == OrderFollow }
 
 // IsHoldingPosition returns whether this unit is executing a Hold Position order.
-func (u *Unit) IsHoldingPosition() bool {
-	o := u.GetOrder()
-	return o == OrderHoldPosition || o == OrderQueenHoldPosition ||
-		o == OrderSuicideHoldPosition || o == OrderMedicHoldPosition ||
-		o == OrderCarrierHoldPosition || o == OrderReaverHoldPosition
-}
+func (u *Unit) IsHoldingPosition() bool { return u.GetOrder() == OrderHoldPosition }
 
 // IsPatrolling returns whether this unit is executing a Patrol order.
 func (u *Unit) IsPatrolling() bool { return u.GetOrder() == OrderPatrol }
@@ -226,24 +216,50 @@ func (u *Unit) IsUpgrading() bool { return u.GetOrder() == OrderUpgrade }
 
 // IsGatheringGas returns whether this worker is gathering gas.
 func (u *Unit) IsGatheringGas() bool {
+	if !u.data.IsGathering() {
+		return false
+	}
 	o := u.GetOrder()
+	if o == OrderHarvest1 || o == OrderHarvest2 {
+		return true
+	}
+	if o == OrderResetHarvestCollision {
+		return u.data.CarryResourceType() == 1
+	}
 	return o == OrderMoveToGas || o == OrderWaitForGas ||
 		o == OrderHarvestGas || o == OrderReturnGas
 }
 
 // IsGatheringMinerals returns whether this worker is gathering minerals.
 func (u *Unit) IsGatheringMinerals() bool {
+	if !u.data.IsGathering() {
+		return false
+	}
 	o := u.GetOrder()
+	if o == OrderHarvest1 || o == OrderHarvest2 {
+		return true
+	}
+	if o == OrderResetHarvestCollision {
+		return u.data.CarryResourceType() == 2
+	}
 	return o == OrderMoveToMinerals || o == OrderWaitForMinerals ||
 		o == OrderMiningMinerals || o == OrderReturnMinerals
 }
 
 // IsBeingConstructed returns whether this unit/building is being constructed.
+// Matches JBWAPI: morphing units always count; for Terran buildings, only if
+// an SCV is actively building; non-Terran incomplete buildings always count.
 func (u *Unit) IsBeingConstructed() bool {
+	if u.data.IsMorphing() {
+		return true
+	}
 	if u.data.IsCompleted() {
 		return false
 	}
-	return u.data.IsMorphing() || u.GetType().IsBuilding()
+	if u.GetType().GetRace() != RaceTerran {
+		return true
+	}
+	return u.GetBuildUnit() != nil
 }
 
 // IsFlying returns whether this unit is airborne.
@@ -253,22 +269,25 @@ func (u *Unit) IsFlying() bool {
 
 // IsTargetable returns whether this unit can be targeted by commands.
 func (u *Unit) IsTargetable() bool {
-	if !u.data.Exists() || u.IsStasised() {
+	if !u.data.Exists() {
 		return false
 	}
 	t := u.GetType()
+	if !u.data.IsCompleted() && !t.IsBuilding() && !u.data.IsMorphing() &&
+		t != UnitTypeProtossArchon && t != UnitTypeProtossDarkArchon {
+		return false
+	}
 	return t != UnitTypeSpellScannerSweep && t != UnitTypeSpellDarkSwarm &&
-		t != UnitTypeSpellDisruptionWeb
+		t != UnitTypeSpellDisruptionWeb && t != UnitTypeSpecialMapRevealer
 }
 
 // IsBeingHealed returns whether this unit is being healed by a Medic.
 func (u *Unit) IsBeingHealed() bool {
-	allUnits := u.game.GetAllUnits()
-	for _, unit := range allUnits {
-		if unit.GetType() == UnitTypeTerranMedic &&
-			unit.GetOrder() == OrderMedicHeal &&
-			unit.GetTarget() != nil &&
-			unit.GetTarget().Index() == u.index {
+	for _, unit := range u.game.GetAllUnits() {
+		if unit.GetType() != UnitTypeTerranMedic || unit.GetOrder() != OrderMedicHeal {
+			continue
+		}
+		if target := unit.GetTarget(); target != nil && target.Index() == u.index {
 			return true
 		}
 	}
@@ -276,6 +295,7 @@ func (u *Unit) IsBeingHealed() bool {
 }
 
 // IsInWeaponRange returns whether the target is within this unit's weapon range.
+// Accounts for player weapon range upgrades.
 func (u *Unit) IsInWeaponRange(target *Unit) bool {
 	if target == nil {
 		return false
@@ -290,9 +310,12 @@ func (u *Unit) IsInWeaponRange(target *Unit) bool {
 		return false
 	}
 	maxRange := weapon.MaxRange()
+	if p := u.GetPlayer(); p != nil {
+		maxRange += p.WeaponMaxRangeUpgrade(weapon)
+	}
 	minRange := weapon.MinRange()
 	dist := u.GetDistanceToUnit(target)
-	return dist <= maxRange && (minRange == 0 || dist >= minRange)
+	return dist <= maxRange && (minRange == 0 || dist > minRange)
 }
 
 func (u *Unit) IsVisibleTo(playerIndex int) bool {
@@ -446,7 +469,7 @@ func (u *Unit) GetInitialPosition() Position {
 // GetInitialTilePosition returns this unit's tile position at game start.
 func (u *Unit) GetInitialTilePosition() TilePosition {
 	if s, ok := u.game.initialStates[u.index]; ok {
-		return s.tilePosition
+		return s.position.ToTilePosition()
 	}
 	return TilePosition{}
 }
@@ -489,8 +512,28 @@ func (u *Unit) GetBottom() int {
 	return int(u.data.PositionY()) + u.GetType().DimensionDown()
 }
 
+// approxDistance computes BWAPI's integer distance approximation.
+// Matches JBWAPI Position.getApproxDistance / BWAPI getApproxDistance.
+func approxDistance(dx, dy int) int {
+	if dx < 0 {
+		dx = -dx
+	}
+	if dy < 0 {
+		dy = -dy
+	}
+	min, max := dx, dy
+	if min > max {
+		min, max = max, min
+	}
+	if min <= max>>2 {
+		return max
+	}
+	minCalc := (3 * min) >> 3
+	return (minCalc >> 5) + minCalc + max - (max >> 4) - (max >> 6)
+}
+
 // GetDistance returns the edge-to-edge distance to a position in pixels.
-// This matches BWAPI's distance calculation used for weapon range checks.
+// Uses BWAPI's approximate distance (matches weapon range checks).
 func (u *Unit) GetDistance(pos Position) int {
 	l := u.GetLeft()
 	t := u.GetTop()
@@ -512,16 +555,17 @@ func (u *Unit) GetDistance(pos Position) int {
 		yDist = py - b
 	}
 
-	return int(math.Sqrt(float64(xDist*xDist + yDist*yDist)))
+	return approxDistance(xDist, yDist)
 }
 
 // GetDistanceToUnit returns the edge-to-edge distance to another unit in pixels.
+// Uses BWAPI's box expansion: only the target box is expanded by ±1.
 func (u *Unit) GetDistanceToUnit(other *Unit) int {
 	if other == nil {
 		return 0
 	}
-	l1, t1, r1, b1 := u.GetLeft(), u.GetTop(), u.GetRight()+1, u.GetBottom()+1
-	l2, t2, r2, b2 := other.GetLeft(), other.GetTop(), other.GetRight()+1, other.GetBottom()+1
+	l1, t1, r1, b1 := u.GetLeft(), u.GetTop(), u.GetRight(), u.GetBottom()
+	l2, t2, r2, b2 := other.GetLeft()-1, other.GetTop()-1, other.GetRight()+1, other.GetBottom()+1
 
 	var xDist, yDist int
 	if l1 > r2 {
@@ -535,7 +579,7 @@ func (u *Unit) GetDistanceToUnit(other *Unit) int {
 		yDist = t2 - b1
 	}
 
-	return int(math.Sqrt(float64(xDist*xDist + yDist*yDist)))
+	return approxDistance(xDist, yDist)
 }
 
 // HasPath returns whether there is a ground path from this unit to a position.
