@@ -238,6 +238,7 @@ const (
 	UnitTypeBuildings                       UnitType = 231
 	UnitTypeFactories                       UnitType = 232
 	UnitTypeUnknown                         UnitType = 233
+	UnitTypeMax                             UnitType = 234
 )
 
 var unitTypeNames = [234]string{

@@ -120,3 +120,24 @@ func (p *Player) IsEnemy(other *Player) bool {
 }
 
 func (p *Player) Color() Color { return Color(p.data.Color()) }
+
+// weaponRangeUpgrades maps weapon types to their range upgrade and bonus pixels.
+var weaponRangeUpgrades = map[WeaponType]struct {
+	upgrade UpgradeType
+	bonus   int
+}{
+	WeaponTypeGaussRifle:          {UpgradeTypeU238Shells, 32},
+	WeaponTypePhaseDisruptor:      {UpgradeTypeSingularityCharge, 64},
+	WeaponTypeHellfireMissilePack: {UpgradeTypeCharonBoosters, 96},
+}
+
+// WeaponMaxRangeUpgrade returns the additional weapon range pixels this player
+// has for the given weapon due to upgrades.
+func (p *Player) WeaponMaxRangeUpgrade(weapon WeaponType) int {
+	if info, ok := weaponRangeUpgrades[weapon]; ok {
+		if p.UpgradeLevel(info.upgrade) > 0 {
+			return info.bonus
+		}
+	}
+	return 0
+}

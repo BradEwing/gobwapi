@@ -24,6 +24,21 @@ const (
 	ShapeTypeLine     ShapeType = 7
 )
 
+// TextSize represents the font size for debug text drawing.
+type TextSize int32
+
+const (
+	TextSizeSmall  TextSize = 0
+	TextSizeDefault TextSize = 1
+	TextSizeLarge  TextSize = 2
+	TextSizeHuge   TextSize = 3
+)
+
+// SetTextSize sets the font size for subsequent draw text calls.
+func (g *Game) SetTextSize(size TextSize) {
+	g.data.AddCommand(int32(CommandTypeSetTextSize), int32(size), 0)
+}
+
 // DrawTextScreen draws text at screen coordinates.
 func (g *Game) DrawTextScreen(x, y int, text string) {
 	idx := g.data.AddString(text)

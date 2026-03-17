@@ -172,6 +172,15 @@ func (gd *GameData) IsOccupied(x, y int) bool {
 func (gd *GameData) MapTileRegionID(x, y int) uint16 {
 	return uint16(gd.c().mapTileRegionId[x][y])
 }
+func (gd *GameData) MapSplitTilesMiniTileMask(i int) uint16 {
+	return uint16(gd.c().mapSplitTilesMiniTileMask[i])
+}
+func (gd *GameData) MapSplitTilesRegion1(i int) uint16 {
+	return uint16(gd.c().mapSplitTilesRegion1[i])
+}
+func (gd *GameData) MapSplitTilesRegion2(i int) uint16 {
+	return uint16(gd.c().mapSplitTilesRegion2[i])
+}
 
 // Regions
 func (gd *GameData) RegionCount() int { return int(gd.c().regionCount) }

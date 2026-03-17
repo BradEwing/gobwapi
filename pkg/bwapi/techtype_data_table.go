@@ -1,0 +1,109 @@
+package bwapi
+
+type fullTechTypeData struct {
+	mineralPrice   int32
+	gasPrice       int32
+	researchTime   int32
+	energyCost     int32
+	whatResearches int32 // UnitType ID
+	race           int32 // Race ID
+	weaponType     int32 // WeaponType ID
+}
+
+// fullTechTypeTable contains static data for all 47 BWAPI tech types, indexed by TechType ID.
+var fullTechTypeTable = [47]fullTechTypeData{
+	// 0: Stim_Packs
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1200, energyCost: 0, whatResearches: 112, race: 1, weaponType: 130},
+	// 1: Lockdown
+	{mineralPrice: 200, gasPrice: 200, researchTime: 1500, energyCost: 100, whatResearches: 117, race: 1, weaponType: 32},
+	// 2: EMP_Shockwave
+	{mineralPrice: 200, gasPrice: 200, researchTime: 1800, energyCost: 100, whatResearches: 116, race: 1, weaponType: 33},
+	// 3: Spider_Mines
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1200, energyCost: 0, whatResearches: 120, race: 1, weaponType: 6},
+	// 4: Scanner_Sweep
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 50, whatResearches: 228, race: 1, weaponType: 130},
+	// 5: Tank_Siege_Mode
+	{mineralPrice: 150, gasPrice: 150, researchTime: 1200, energyCost: 0, whatResearches: 120, race: 1, weaponType: 130},
+	// 6: Defensive_Matrix
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 100, whatResearches: 228, race: 1, weaponType: 130},
+	// 7: Irradiate
+	{mineralPrice: 200, gasPrice: 200, researchTime: 1200, energyCost: 75, whatResearches: 116, race: 1, weaponType: 34},
+	// 8: Yamato_Gun
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1800, energyCost: 150, whatResearches: 118, race: 1, weaponType: 30},
+	// 9: Cloaking_Field
+	{mineralPrice: 150, gasPrice: 150, researchTime: 1500, energyCost: 25, whatResearches: 115, race: 1, weaponType: 130},
+	// 10: Personnel_Cloaking
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1200, energyCost: 25, whatResearches: 117, race: 1, weaponType: 130},
+	// 11: Burrowing
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1200, energyCost: 0, whatResearches: 131, race: 0, weaponType: 130},
+	// 12: Infestation
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 0, weaponType: 130},
+	// 13: Spawn_Broodlings
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1200, energyCost: 150, whatResearches: 138, race: 0, weaponType: 57},
+	// 14: Dark_Swarm
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 100, whatResearches: 228, race: 0, weaponType: 59},
+	// 15: Plague
+	{mineralPrice: 200, gasPrice: 200, researchTime: 1500, energyCost: 150, whatResearches: 136, race: 0, weaponType: 60},
+	// 16: Consume
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1500, energyCost: 0, whatResearches: 136, race: 0, weaponType: 61},
+	// 17: Ensnare
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1200, energyCost: 75, whatResearches: 138, race: 0, weaponType: 58},
+	// 18: Parasite
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 75, whatResearches: 228, race: 0, weaponType: 56},
+	// 19: Psionic_Storm
+	{mineralPrice: 200, gasPrice: 200, researchTime: 1800, energyCost: 75, whatResearches: 165, race: 2, weaponType: 84},
+	// 20: Hallucination
+	{mineralPrice: 150, gasPrice: 150, researchTime: 1200, energyCost: 100, whatResearches: 165, race: 2, weaponType: 130},
+	// 21: Recall
+	{mineralPrice: 150, gasPrice: 150, researchTime: 1800, energyCost: 150, whatResearches: 170, race: 2, weaponType: 130},
+	// 22: Stasis_Field
+	{mineralPrice: 150, gasPrice: 150, researchTime: 1500, energyCost: 100, whatResearches: 170, race: 2, weaponType: 83},
+	// 23: Archon_Warp
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 2, weaponType: 130},
+	// 24: Restoration
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1200, energyCost: 50, whatResearches: 112, race: 1, weaponType: 102},
+	// 25: Disruption_Web
+	{mineralPrice: 200, gasPrice: 200, researchTime: 1200, energyCost: 125, whatResearches: 169, race: 2, weaponType: 101},
+	// 26: Unused_26
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 27: Mind_Control
+	{mineralPrice: 200, gasPrice: 200, researchTime: 1800, energyCost: 150, whatResearches: 165, race: 2, weaponType: 105},
+	// 28: Dark_Archon_Meld
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 2, weaponType: 130},
+	// 29: Feedback
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1800, energyCost: 50, whatResearches: 228, race: 2, weaponType: 106},
+	// 30: Optical_Flare
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1800, energyCost: 75, whatResearches: 112, race: 1, weaponType: 107},
+	// 31: Maelstrom
+	{mineralPrice: 100, gasPrice: 100, researchTime: 1500, energyCost: 100, whatResearches: 165, race: 2, weaponType: 108},
+	// 32: Lurker_Aspect
+	{mineralPrice: 200, gasPrice: 200, researchTime: 1800, energyCost: 0, whatResearches: 135, race: 0, weaponType: 130},
+	// 33: Unused_33
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 34: Healing
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 1, whatResearches: 228, race: 1, weaponType: 130},
+	// 35: gap_35
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 36: gap_36
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 37: gap_37
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 38: gap_38
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 39: gap_39
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 40: gap_40
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 41: gap_41
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 42: gap_42
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 43: gap_43
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 44: None
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 7, weaponType: 130},
+	// 45: Nuclear_Strike
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 228, race: 1, weaponType: 31},
+	// 46: Unknown
+	{mineralPrice: 0, gasPrice: 0, researchTime: 0, energyCost: 0, whatResearches: 233, race: 8, weaponType: 131},
+}

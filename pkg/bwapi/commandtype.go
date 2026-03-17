@@ -23,6 +23,7 @@ const (
 	CommandTypeSetVision                CommandType = 16
 	CommandTypeSetCommandOptimizerLevel CommandType = 17
 	CommandTypeSetRevealAll             CommandType = 18
+	CommandTypeSetTextSize              CommandType = 19
 )
 
 func (c CommandType) String() string {
@@ -65,6 +66,8 @@ func (c CommandType) String() string {
 		return "SetCommandOptimizerLevel"
 	case CommandTypeSetRevealAll:
 		return "SetRevealAll"
+	case CommandTypeSetTextSize:
+		return "SetTextSize"
 	default:
 		return "Unknown"
 	}
