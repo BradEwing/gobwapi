@@ -410,3 +410,24 @@ func (ut UnitType) Size() UnitSizeType {
 	}
 	return unitTypeTable[ut].size
 }
+
+// TileSize returns the tile dimensions of this unit type as a TilePosition.
+func (ut UnitType) TileSize() TilePosition {
+	return TilePosition{X: int32(ut.TileWidth()), Y: int32(ut.TileHeight())}
+}
+
+// ProducesLarva returns whether this unit type produces larva (Hatchery, Lair, Hive).
+func (ut UnitType) ProducesLarva() bool {
+	return ut == UnitTypeZergHatchery || ut == UnitTypeZergLair || ut == UnitTypeZergHive
+}
+
+// CanBuildAddon returns whether this building type can have an addon attached.
+func (ut UnitType) CanBuildAddon() bool {
+	switch ut {
+	case UnitTypeTerranCommandCenter, UnitTypeTerranFactory,
+		UnitTypeTerranStarport, UnitTypeTerranScienceFacility,
+		UnitTypeTerranBarracks:
+		return true
+	}
+	return false
+}
