@@ -11,8 +11,6 @@ type Unit struct {
 	index int
 }
 
-// --- Identity ---
-
 func (u *Unit) ID() int           { return int(u.data.ID()) }
 func (u *Unit) Index() int        { return u.index }
 func (u *Unit) Exists() bool      { return u.data.Exists() }
@@ -27,8 +25,6 @@ func (u *Unit) GetPlayer() *Player {
 	return &Player{data: u.game.data.Player(idx), game: u.game, index: idx}
 }
 
-// --- Position ---
-
 func (u *Unit) GetPosition() Position {
 	return Position{X: u.data.PositionX(), Y: u.data.PositionY()}
 }
@@ -41,8 +37,6 @@ func (u *Unit) Angle() float64     { return u.data.Angle() }
 func (u *Unit) VelocityX() float64 { return u.data.VelocityX() }
 func (u *Unit) VelocityY() float64 { return u.data.VelocityY() }
 
-// --- Stats ---
-
 func (u *Unit) HitPoints() int        { return int(u.data.HitPoints()) }
 func (u *Unit) LastHitPoints() int    { return int(u.data.LastHitPoints()) }
 func (u *Unit) Shields() int          { return int(u.data.Shields()) }
@@ -52,8 +46,6 @@ func (u *Unit) KillCount() int        { return int(u.data.KillCount()) }
 func (u *Unit) ScarabCount() int      { return int(u.data.ScarabCount()) }
 func (u *Unit) InterceptorCount() int { return int(u.data.InterceptorCount()) }
 func (u *Unit) SpiderMineCount() int  { return int(u.data.SpiderMineCount()) }
-
-// --- Timers ---
 
 func (u *Unit) GroundWeaponCooldown() int { return int(u.data.GroundWeaponCooldown()) }
 func (u *Unit) AirWeaponCooldown() int    { return int(u.data.AirWeaponCooldown()) }
@@ -73,8 +65,6 @@ func (u *Unit) RemainingBuildTime() int     { return int(u.data.RemainingBuildTi
 func (u *Unit) RemainingTrainTime() int     { return int(u.data.RemainingTrainTime()) }
 func (u *Unit) RemainingResearchTime() int  { return int(u.data.RemainingResearchTime()) }
 func (u *Unit) RemainingUpgradeTime() int   { return int(u.data.RemainingUpgradeTime()) }
-
-// --- Orders ---
 
 func (u *Unit) GetOrder() Order          { return Order(u.data.OrderID()) }
 func (u *Unit) GetSecondaryOrder() Order { return Order(u.data.SecondaryOrderID()) }
@@ -104,8 +94,6 @@ func (u *Unit) GetRallyPosition() Position {
 	return Position{X: u.data.RallyPositionX(), Y: u.data.RallyPositionY()}
 }
 
-// --- Training ---
-
 func (u *Unit) TrainingQueueCount() int { return int(u.data.TrainingQueueCount()) }
 
 func (u *Unit) GetTrainingQueue() []UnitType {
@@ -116,8 +104,6 @@ func (u *Unit) GetTrainingQueue() []UnitType {
 	}
 	return queue
 }
-
-// --- Flags ---
 
 func (u *Unit) IsCompleted() bool      { return u.data.IsCompleted() }
 func (u *Unit) IsConstructing() bool   { return u.data.IsConstructing() }
@@ -148,8 +134,6 @@ func (u *Unit) IsInterruptible() bool       { return u.data.IsInterruptible() }
 func (u *Unit) IsParasited() bool           { return u.data.IsParasited() }
 func (u *Unit) IsStartingAttack() bool      { return u.data.IsStartingAttack() }
 func (u *Unit) IsStuck() bool { return u.data.IsStuck() }
-
-// --- Derived Status Flags ---
 
 // IsDefenseMatrixed returns whether this unit is under a Defense Matrix.
 func (u *Unit) IsDefenseMatrixed() bool { return u.data.DefenseMatrixTimer() > 0 }
@@ -327,8 +311,6 @@ func (u *Unit) IsVisible() bool {
 	return u.data.IsVisibleTo(selfIdx)
 }
 
-// --- Related Units ---
-
 func (u *Unit) GetAddon() *Unit {
 	idx := int(u.data.AddonIndex())
 	if idx < 0 || idx >= shm.MaxUnits {
@@ -397,8 +379,6 @@ func (u *Unit) GetBuildUnit() *Unit {
 	return u.game.GetUnit(idx)
 }
 
-// --- Data Reads ---
-
 // GetTech returns the TechType currently being researched by this building.
 func (u *Unit) GetTech() TechType { return TechType(u.data.TechID()) }
 
@@ -447,7 +427,6 @@ func (u *Unit) GetUnitsInRadius(radius int, filter func(*Unit) bool) []*Unit {
 	return u.game.getUnitsInRadiusFiltered(int(u.data.PositionX()), int(u.data.PositionY()), radius, filter)
 }
 
-// --- Initial State ---
 // These methods return the unit's state at game start. Requires Game.SnapshotInitialState().
 
 // GetInitialType returns this unit's type at game start.
@@ -490,8 +469,6 @@ func (u *Unit) GetInitialResources() int {
 	return 0
 }
 
-// --- Bounding Box ---
-
 // GetLeft returns the left pixel edge of this unit's collision box.
 func (u *Unit) GetLeft() int {
 	return int(u.data.PositionX()) - u.GetType().DimensionLeft()
@@ -512,26 +489,6 @@ func (u *Unit) GetBottom() int {
 	return int(u.data.PositionY()) + u.GetType().DimensionDown()
 }
 
-// approxDistance computes BWAPI's integer distance approximation.
-// Matches JBWAPI Position.getApproxDistance / BWAPI getApproxDistance.
-func approxDistance(dx, dy int) int {
-	if dx < 0 {
-		dx = -dx
-	}
-	if dy < 0 {
-		dy = -dy
-	}
-	min, max := dx, dy
-	if min > max {
-		min, max = max, min
-	}
-	if min <= max>>2 {
-		return max
-	}
-	minCalc := (3 * min) >> 3
-	return (minCalc >> 5) + minCalc + max - (max >> 4) - (max >> 6)
-}
-
 // GetDistance returns the edge-to-edge distance to a position in pixels.
 // Uses BWAPI's approximate distance (matches weapon range checks).
 func (u *Unit) GetDistance(pos Position) int {
@@ -543,19 +500,19 @@ func (u *Unit) GetDistance(pos Position) int {
 	px := int(pos.X)
 	py := int(pos.Y)
 
-	var xDist, yDist int
+	var xDist, yDist int32
 	if px < l {
-		xDist = l - px
+		xDist = int32(l - px)
 	} else if px > r {
-		xDist = px - r
+		xDist = int32(px - r)
 	}
 	if py < t {
-		yDist = t - py
+		yDist = int32(t - py)
 	} else if py > b {
-		yDist = py - b
+		yDist = int32(py - b)
 	}
 
-	return approxDistance(xDist, yDist)
+	return int(approxDistance(xDist, yDist))
 }
 
 // GetDistanceToUnit returns the edge-to-edge distance to another unit in pixels.
@@ -567,19 +524,19 @@ func (u *Unit) GetDistanceToUnit(other *Unit) int {
 	l1, t1, r1, b1 := u.GetLeft(), u.GetTop(), u.GetRight(), u.GetBottom()
 	l2, t2, r2, b2 := other.GetLeft()-1, other.GetTop()-1, other.GetRight()+1, other.GetBottom()+1
 
-	var xDist, yDist int
+	var xDist, yDist int32
 	if l1 > r2 {
-		xDist = l1 - r2
+		xDist = int32(l1 - r2)
 	} else if l2 > r1 {
-		xDist = l2 - r1
+		xDist = int32(l2 - r1)
 	}
 	if t1 > b2 {
-		yDist = t1 - b2
+		yDist = int32(t1 - b2)
 	} else if t2 > b1 {
-		yDist = t2 - b1
+		yDist = int32(t2 - b1)
 	}
 
-	return approxDistance(xDist, yDist)
+	return int(approxDistance(xDist, yDist))
 }
 
 // HasPath returns whether there is a ground path from this unit to a position.
@@ -594,8 +551,6 @@ func (u *Unit) HasPathToUnit(other *Unit) bool {
 	}
 	return u.game.HasPath(u.GetPosition(), other.GetPosition())
 }
-
-// --- Related Unit Collections ---
 
 // GetLarva returns all larva units associated with this hatchery/lair/hive.
 func (u *Unit) GetLarva() []*Unit {
@@ -634,8 +589,6 @@ func (u *Unit) GetInterceptors() []*Unit {
 	}
 	return interceptors
 }
-
-// --- Commands ---
 
 func (u *Unit) issueCommand(cmdType UnitCommandType, targetIdx, x, y, extra int32) {
 	u.game.data.AddUnitCommand(int32(cmdType), int32(u.index), targetIdx, x, y, extra)

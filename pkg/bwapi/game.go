@@ -53,8 +53,6 @@ func (g *Game) SnapshotInitialState() {
 	}
 }
 
-// --- Frame Info ---
-
 func (g *Game) FrameCount() int     { return int(g.data.FrameCount()) }
 func (g *Game) FPS() int            { return int(g.data.FPS()) }
 func (g *Game) AverageFPS() float64 { return g.data.AverageFPS() }
@@ -72,8 +70,6 @@ func (g *Game) RandomSeed() uint32    { return g.data.RandomSeed() }
 func (g *Game) ReplayFrameCount() int { return int(g.data.ReplayFrameCount()) }
 func (g *Game) ElapsedTime() int      { return int(g.data.ElapsedTime()) }
 func (g *Game) CountdownTimer() int   { return int(g.data.CountdownTimer()) }
-
-// --- Map Info ---
 
 func (g *Game) MapWidth() int       { return int(g.data.MapWidth()) }
 func (g *Game) MapHeight() int      { return int(g.data.MapHeight()) }
@@ -119,8 +115,6 @@ func (g *Game) GetStartLocations() []TilePosition {
 	return locs
 }
 
-// --- Players ---
-
 // Self returns the player representing this bot.
 func (g *Game) Self() *Player {
 	idx := int(g.data.SelfIndex())
@@ -157,8 +151,6 @@ func (g *Game) GetPlayers() []*Player {
 	}
 	return players
 }
-
-// --- Units ---
 
 // GetAllUnits returns all units visible to the self player.
 func (g *Game) GetAllUnits() []*Unit {
@@ -202,8 +194,6 @@ func (g *Game) GetUnit(index int) *Unit {
 	return &Unit{data: ud, game: g, index: index}
 }
 
-// --- Bullets ---
-
 // GetBullets returns all active bullets.
 func (g *Game) GetBullets() []*Bullet {
 	bullets := make([]*Bullet, 0)
@@ -217,8 +207,6 @@ func (g *Game) GetBullets() []*Bullet {
 	return bullets
 }
 
-// --- Regions ---
-
 // GetRegions returns all pathfinding regions.
 func (g *Game) GetRegions() []*Region {
 	count := g.data.RegionCount()
@@ -228,8 +216,6 @@ func (g *Game) GetRegions() []*Region {
 	}
 	return regions
 }
-
-// --- Nuke Dots ---
 
 // GetNukeDots returns positions of detected nuclear strikes.
 func (g *Game) GetNukeDots() []Position {
@@ -241,14 +227,10 @@ func (g *Game) GetNukeDots() []Position {
 	return dots
 }
 
-// --- Input ---
-
 func (g *Game) MouseX() int  { return int(g.data.MouseX()) }
 func (g *Game) MouseY() int  { return int(g.data.MouseY()) }
 func (g *Game) ScreenX() int { return int(g.data.ScreenX()) }
 func (g *Game) ScreenY() int { return int(g.data.ScreenY()) }
-
-// --- Commands ---
 
 // SetScreenPosition moves the screen to the given pixel coordinates.
 func (g *Game) SetScreenPosition(x, y int) {
@@ -320,8 +302,6 @@ func (g *Game) SetGUI(enabled bool) {
 	g.data.AddCommand(int32(CommandTypeSetGui), v, 0)
 }
 
-// --- API Info ---
-
 func (g *Game) Revision() int        { return int(g.data.Revision()) }
 func (g *Game) ClientVersion() int   { return int(g.data.ClientVersion()) }
 func (g *Game) IsDebug() bool        { return g.data.IsDebug() }
@@ -338,8 +318,6 @@ func (g *Game) GetAPM(includeSelects bool) int {
 	}
 	return int(g.data.BotAPMNoSelects())
 }
-
-// --- Input ---
 
 // GetMousePosition returns the mouse position as a Position.
 func (g *Game) GetMousePosition() Position {
@@ -364,8 +342,6 @@ func (g *Game) IsFlagEnabled(flag int) bool { return g.data.Flag(flag) }
 func (g *Game) IsOccupied(tileX, tileY int) bool {
 	return g.data.IsOccupied(tileX, tileY)
 }
-
-// --- Additional Commands ---
 
 // RestartGame restarts the current match.
 func (g *Game) RestartGame() {
@@ -423,8 +399,6 @@ func (g *Game) SendTextEx(toAllies bool, text string) {
 	g.data.AddCommand(int32(CommandTypeSendText), idx, v2)
 }
 
-// --- Player Collections ---
-
 // Allies returns all allied players.
 func (g *Game) Allies() []*Player {
 	self := g.Self()
@@ -478,8 +452,6 @@ func (g *Game) Observers() []*Player {
 	return observers
 }
 
-// --- Forces ---
-
 // GetForces returns all forces (team groupings) in the game.
 func (g *Game) GetForces() []*Force {
 	count := g.data.ForceCount()
@@ -497,8 +469,6 @@ func (g *Game) GetForce(index int) *Force {
 	}
 	return &Force{data: g.data.Force(index), game: g, index: index}
 }
-
-// --- Region Lookup ---
 
 // GetRegion returns a region by its ID.
 func (g *Game) GetRegion(id int) *Region {
@@ -535,8 +505,6 @@ func (g *Game) GetRegionAt(x, y int) *Region {
 	}
 	return &Region{data: g.data.Region(regionID), game: g}
 }
-
-// --- Unit Collections ---
 
 // GetSelectedUnits returns the units currently selected by the player.
 func (g *Game) GetSelectedUnits() []*Unit {
@@ -635,8 +603,6 @@ func (g *Game) GetStaticNeutralUnits() []*Unit {
 	return neutrals
 }
 
-// --- Spatial Unit Queries ---
-
 // GetUnitsOnTile returns all visible units on a specific build tile.
 func (g *Game) GetUnitsOnTile(tileX, tileY int) []*Unit {
 	left := int32(tileX * 32)
@@ -714,8 +680,6 @@ func (g *Game) GetClosestUnit(x, y int, filter func(*Unit) bool) *Unit {
 	return closest
 }
 
-// --- Path Queries ---
-
 // HasPath returns whether there is a ground path between two positions,
 // based on BWAPI region island connectivity.
 func (g *Game) HasPath(source, dest Position) bool {
@@ -729,8 +693,6 @@ func (g *Game) HasPath(source, dest Position) bool {
 	}
 	return r1.IslandID() == r2.IslandID()
 }
-
-// --- Build / Production Queries ---
 
 // CanBuildHere checks whether a building of the given type can be placed at
 // the given tile position. If builder is non-nil, its position is excluded
@@ -811,6 +773,75 @@ func (g *Game) CanBuildHere(pos TilePosition, unitType UnitType, builder *Unit, 
 	}
 
 	return true
+}
+
+// GetBuildLocation finds a valid placement for the given building type near the
+// specified tile position. It scans tiles in a spiral outward from near,
+// checking CanBuildHere and ground path connectivity for each candidate.
+// The creep parameter is accepted for API compatibility with BWAPI but is
+// currently unused (creep requirements are enforced by CanBuildHere).
+// If builder is non-nil, it is passed to CanBuildHere for collision exclusion.
+// Returns the found position and true, or a zero TilePosition and false if
+// unitType is not a building or no valid spot exists within maxRange tiles.
+func (g *Game) GetBuildLocation(unitType UnitType, near TilePosition, maxRange int, creep bool, builder *Unit) (TilePosition, bool) {
+	if !unitType.IsBuilding() {
+		return TilePosition{}, false
+	}
+	if maxRange <= 0 {
+		maxRange = 64
+	}
+
+	nearCenter := near.ToPosition()
+	tw := unitType.TileWidth()
+	th := unitType.TileHeight()
+
+	var fallback TilePosition
+	fallbackFound := false
+	fallbackDist := int64(1<<62 - 1)
+
+	for radius := int32(0); radius < int32(maxRange); radius++ {
+		for dx := -radius; dx <= radius; dx++ {
+			for dy := -radius; dy <= radius; dy++ {
+				if dx != -radius && dx != radius && dy != -radius && dy != radius {
+					continue
+				}
+				tp := TilePosition{X: near.X + dx, Y: near.Y + dy}
+				if !g.CanBuildHere(tp, unitType, builder, false) {
+					continue
+				}
+				// Check ground connectivity: building center must be path-reachable
+				// from near's center.
+				bldCenter := Position{
+					X: tp.X*32 + int32(tw)*16,
+					Y: tp.Y*32 + int32(th)*16,
+				}
+				if !g.HasPath(nearCenter, bldCenter) {
+					continue
+				}
+				// Track as candidate; pick by approximate distance.
+				cdx := int64(bldCenter.X) - int64(nearCenter.X)
+				cdy := int64(bldCenter.Y) - int64(nearCenter.Y)
+				dist := cdx*cdx + cdy*cdy
+				if !fallbackFound || dist < fallbackDist {
+					fallback = tp
+					fallbackFound = true
+					fallbackDist = dist
+				}
+				// First ring that has any valid tile wins — return immediately
+				// since the spiral guarantees we've checked all tiles at this
+				// Chebyshev distance.
+			}
+		}
+		if fallbackFound {
+			return fallback, true
+		}
+	}
+	// Fallback: if a valid tile was found beyond maxRange during iteration
+	// (not possible with current logic, but guard for future changes).
+	if fallbackFound {
+		return fallback, true
+	}
+	return TilePosition{}, false
 }
 
 // CanMake checks whether the self player can produce a unit of the given type.
