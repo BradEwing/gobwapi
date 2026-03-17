@@ -776,72 +776,24 @@ func (g *Game) CanBuildHere(pos TilePosition, unitType UnitType, builder *Unit, 
 }
 
 // GetBuildLocation finds a valid placement for the given building type near the
-// specified tile position. It scans tiles in a spiral outward from near,
-// checking CanBuildHere and ground path connectivity for each candidate.
-// The creep parameter is accepted for API compatibility with BWAPI but is
-// currently unused (creep requirements are enforced by CanBuildHere).
-// If builder is non-nil, it is passed to CanBuildHere for collision exclusion.
+// specified tile position. It uses BWAPI's PlacementReserve bitmap algorithm:
+// a 64x64 grid centered on near is populated with buildable locations, then
+// filtered by path connectivity, ground height, structure padding, and
+// template spacing. The closest valid cell by approximate distance is returned.
+// The creep parameter is accepted for API compatibility but is currently unused.
+// The builder parameter is unused in the current implementation (matching BWAPI
+// C++ behavior where getBuildLocation does not accept a builder).
 // Returns the found position and true, or a zero TilePosition and false if
 // unitType is not a building or no valid spot exists within maxRange tiles.
 func (g *Game) GetBuildLocation(unitType UnitType, near TilePosition, maxRange int, creep bool, builder *Unit) (TilePosition, bool) {
-	if !unitType.IsBuilding() {
-		return TilePosition{}, false
-	}
 	if maxRange <= 0 {
 		maxRange = 64
 	}
-
-	nearCenter := near.ToPosition()
-	tw := unitType.TileWidth()
-	th := unitType.TileHeight()
-
-	var fallback TilePosition
-	fallbackFound := false
-	fallbackDist := int64(1<<62 - 1)
-
-	for radius := int32(0); radius < int32(maxRange); radius++ {
-		for dx := -radius; dx <= radius; dx++ {
-			for dy := -radius; dy <= radius; dy++ {
-				if dx != -radius && dx != radius && dy != -radius && dy != radius {
-					continue
-				}
-				tp := TilePosition{X: near.X + dx, Y: near.Y + dy}
-				if !g.CanBuildHere(tp, unitType, builder, false) {
-					continue
-				}
-				// Check ground connectivity: building center must be path-reachable
-				// from near's center.
-				bldCenter := Position{
-					X: tp.X*32 + int32(tw)*16,
-					Y: tp.Y*32 + int32(th)*16,
-				}
-				if !g.HasPath(nearCenter, bldCenter) {
-					continue
-				}
-				// Track as candidate; pick by approximate distance.
-				cdx := int64(bldCenter.X) - int64(nearCenter.X)
-				cdy := int64(bldCenter.Y) - int64(nearCenter.Y)
-				dist := cdx*cdx + cdy*cdy
-				if !fallbackFound || dist < fallbackDist {
-					fallback = tp
-					fallbackFound = true
-					fallbackDist = dist
-				}
-				// First ring that has any valid tile wins — return immediately
-				// since the spiral guarantees we've checked all tiles at this
-				// Chebyshev distance.
-			}
-		}
-		if fallbackFound {
-			return fallback, true
-		}
+	result := buildingPlacerGetBuildLocation(unitType, near, maxRange, creep, g)
+	if result.X == -1 && result.Y == -1 {
+		return TilePosition{}, false
 	}
-	// Fallback: if a valid tile was found beyond maxRange during iteration
-	// (not possible with current logic, but guard for future changes).
-	if fallbackFound {
-		return fallback, true
-	}
-	return TilePosition{}, false
+	return result, true
 }
 
 // CanMake checks whether the self player can produce a unit of the given type.

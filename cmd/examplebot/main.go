@@ -15,6 +15,8 @@ type ExampleBot struct {
 	bwem *bwem.Map
 
 	poolOrdered      bool                // true once we've issued a build-pool command
+	poolLoc          *bwapi.TilePosition // where the pool is being built
+	poolBuilderIdx   int                 // unit index of the drone building the pool
 	enemyBase        *bwapi.TilePosition // discovered enemy start location
 	scoutTargets     []bwapi.TilePosition
 	scoutAssignments map[int]int // unit index -> scoutTargets index
@@ -43,6 +45,7 @@ func (b *ExampleBot) OnStart(game *bwapi.Game) {
 		}
 		b.scoutTargets = append(b.scoutTargets, loc)
 	}
+	b.poolBuilderIdx = -1
 	b.scoutAssignments = make(map[int]int)
 	log.Printf("Scout targets: %d enemy start locations", len(b.scoutTargets))
 }
@@ -118,7 +121,24 @@ func (b *ExampleBot) OnFrame(game *bwapi.Game) {
 		game.DrawTextScreen(10, 50, fmt.Sprintf("Enemy base: (%d, %d)", b.enemyBase.X, b.enemyBase.Y))
 	}
 
-	if poolCount == 0 && !b.poolOrdered && self.Minerals() >= 200 && hatchery != nil {
+	// Debug: draw pool build location and line from builder.
+	if b.poolLoc != nil {
+		px := int(b.poolLoc.X) * 32
+		py := int(b.poolLoc.Y) * 32
+		game.DrawBoxMap(px, py, px+3*32, py+2*32, bwapi.ColorGreen, false)
+		game.DrawTextMap(px+4, py+4, fmt.Sprintf("Pool(%d,%d)", px, py))
+
+		if b.poolBuilderIdx >= 0 {
+			builder := game.GetUnit(b.poolBuilderIdx)
+			if builder != nil && builder.Exists() {
+				bPos := builder.GetPosition()
+				game.DrawLineMap(int(bPos.X), int(bPos.Y), px+32, py+32, bwapi.ColorGreen)
+			}
+		}
+	}
+
+	m := self.Minerals()
+	if poolCount == 0 && !b.poolOrdered && m >= 200 && hatchery != nil {
 		// Find an idle drone to build.
 		var builder *bwapi.Unit
 		for _, d := range drones {
@@ -128,10 +148,12 @@ func (b *ExampleBot) OnFrame(game *bwapi.Game) {
 			}
 		}
 		if builder != nil {
-			loc, ok := game.GetBuildLocation(bwapi.UnitTypeZergSpawningPool, hatchery.GetTilePosition(), 15, false, builder)
+			loc, ok := game.GetBuildLocation(bwapi.UnitTypeZergSpawningPool, hatchery.GetTilePosition(), 32, true, builder)
 			if ok {
 				builder.Build(bwapi.UnitTypeZergSpawningPool, loc)
 				b.poolOrdered = true
+				b.poolLoc = &loc
+				b.poolBuilderIdx = builder.Index()
 				log.Printf("Building spawning pool at (%d, %d)", loc.X, loc.Y)
 			}
 		}
@@ -336,7 +358,6 @@ func nearestMineral(from *bwapi.Unit, minerals []*bwapi.Unit) *bwapi.Unit {
 }
 
 func main() {
-	log.Println("Starting 4-pool bot...")
 	client := bwapi.NewBWClient()
 	defer client.Close()
 	client.Run(&ExampleBot{})
