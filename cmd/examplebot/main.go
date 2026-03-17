@@ -69,14 +69,15 @@ func (b *ExampleBot) OnFrame(game *bwapi.Game) {
 	game.DrawTextScreen(10, 30, fmt.Sprintf("Supply: %d/%d", self.SupplyUsed(), self.SupplyTotal()))
 
 	var (
-		drones    []*bwapi.Unit
-		larva     []*bwapi.Unit
-		zerglings []*bwapi.Unit
-		overlords []*bwapi.Unit
-		hatchery  *bwapi.Unit
-		poolCount int // spawning pools (building or complete)
-		enemies   []*bwapi.Unit
-		minerals  []*bwapi.Unit
+		drones            []*bwapi.Unit
+		larva             []*bwapi.Unit
+		zerglings         []*bwapi.Unit
+		overlords         []*bwapi.Unit
+		hatchery          *bwapi.Unit
+		poolCount         int // spawning pools (building or complete)
+		morphingOverlords int // eggs becoming overlords
+		enemies           []*bwapi.Unit
+		minerals          []*bwapi.Unit
 	)
 
 	units := game.GetAllUnits()
@@ -100,6 +101,10 @@ func (b *ExampleBot) OnFrame(game *bwapi.Game) {
 				}
 			case bwapi.UnitTypeZergSpawningPool:
 				poolCount++
+			case bwapi.UnitTypeZergEgg:
+				if u.GetBuildType() == bwapi.UnitTypeZergOverlord {
+					morphingOverlords++
+				}
 			}
 		} else if player != nil && player.Index() != self.Index() && !player.IsNeutral() {
 			enemies = append(enemies, u)
@@ -115,8 +120,8 @@ func (b *ExampleBot) OnFrame(game *bwapi.Game) {
 
 	poolComplete := self.CompletedUnitCount(bwapi.UnitTypeZergSpawningPool) > 0
 
-	game.DrawTextScreen(10, 40, fmt.Sprintf("Drones: %d  Lings: %d  Larva: %d  Pool: %d",
-		len(drones), len(zerglings), len(larva), poolCount))
+	game.DrawTextScreen(10, 40, fmt.Sprintf("Drones: %d  Lings: %d  Larva: %d  Pool: %d  OL: %d (morphing: %d)",
+		len(drones), len(zerglings), len(larva), poolCount, len(overlords), morphingOverlords))
 	if b.enemyBase != nil {
 		game.DrawTextScreen(10, 50, fmt.Sprintf("Enemy base: (%d, %d)", b.enemyBase.X, b.enemyBase.Y))
 	}
@@ -157,6 +162,15 @@ func (b *ExampleBot) OnFrame(game *bwapi.Game) {
 				log.Printf("Building spawning pool at (%d, %d)", loc.X, loc.Y)
 			}
 		}
+	}
+
+	// Build overlord if supply is blocked or about to be, and none are already morphing.
+	supplyUsed := self.SupplyUsed()
+	supplyTotal := self.SupplyTotal()
+	if len(larva) > 0 && self.Minerals() >= 100 && morphingOverlords == 0 &&
+		supplyTotal-supplyUsed <= 1 && supplyTotal < 400 {
+		larva[0].Morph(bwapi.UnitTypeZergOverlord)
+		larva = larva[1:]
 	}
 
 	if len(drones) < 4 && self.Minerals() >= 50 && len(larva) > 0 {
